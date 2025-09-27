@@ -26,6 +26,12 @@ pub struct User {
   pub username: String,
   pub password_hash: String,
   pub groups: Vec<String>,
+  pub home_manager_cfg: Option<HomeManagerCfg>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct HomeManagerCfg {
+  pub packages: Vec<String>,
 }
 
 impl User {
@@ -35,7 +41,13 @@ impl User {
     } else {
       self.groups.join(", ")
     };
-    vec![self.username.clone(), groups]
+    let use_hm = if self.home_manager_cfg.is_some() {
+      "yes"
+    } else {
+      "no"
+    }
+    .to_string();
+    vec![self.username.clone(), groups, use_hm]
   }
 }
 
@@ -57,6 +69,7 @@ impl UserAccounts {
     let headers = vec![
       "Username".to_string(),
       "Groups".to_string(),
+      "Use Home Manager".to_string(),
     ];
     let mut rows: Vec<Vec<String>> = users.into_iter().map(|u| u.as_table_row()).collect();
     rows.insert(0, vec!["Add a new user".into(), "".into()]);
@@ -143,6 +156,7 @@ impl UserAccounts {
       vec![
         "Username".to_string(),
         "Groups".to_string(),
+        "Use Home Manager".to_string(),
       ],
       users.into_iter().map(|u| u.as_table_row()).collect(),
     )))
@@ -662,6 +676,7 @@ impl Page for AddUser {
                 username,
                 password_hash: hashed,
                 groups: vec![],
+                home_manager_cfg: None,
               });
               let idx = installer.users.len() - 1;
               self.created_user_idx = Some(idx);
@@ -797,6 +812,7 @@ impl AlterUser {
       Box::new(Button::new("Change username")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("Change password")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("Edit Groups")) as Box<dyn ConfigWidget>,
+      Box::new(Button::new("Configure Home Manager")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("Delete user")) as Box<dyn ConfigWidget>,
     ];
     let mut buttons = WidgetBox::button_menu(buttons);
@@ -999,6 +1015,7 @@ impl AlterUser {
         Box::new(Button::new("Change username")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("Change password")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("Edit Groups")) as Box<dyn ConfigWidget>,
+        Box::new(Button::new("Configure Home Manager")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("Delete user")) as Box<dyn ConfigWidget>,
       ];
       self.buttons.set_children_inplace(buttons);
@@ -1037,6 +1054,16 @@ impl AlterUser {
             Signal::Wait
           }
           Some(3) => {
+            let existing_config = installer
+              .users
+              .get(self.selected_user)
+              .and_then(|user| user.home_manager_cfg.clone());
+            Signal::Push(Box::new(ConfigureHomeManager::new(
+              self.selected_user,
+              existing_config,
+            )))
+          }
+          Some(4) => {
             // Delete user
             if !self.confirming_delete {
               self.confirming_delete = true;
@@ -1044,6 +1071,7 @@ impl AlterUser {
                 Box::new(Button::new("Change username")) as Box<dyn ConfigWidget>,
                 Box::new(Button::new("Change password")) as Box<dyn ConfigWidget>,
                 Box::new(Button::new("Edit Groups")) as Box<dyn ConfigWidget>,
+                Box::new(Button::new("Configure Home Manager")) as Box<dyn ConfigWidget>,
                 Box::new(Button::new("Really?")) as Box<dyn ConfigWidget>,
               ];
               self.buttons.set_children_inplace(buttons);
@@ -1449,7 +1477,7 @@ impl Page for AlterUser {
   }
 }
 
-                                 pub struct ConfigureHomeManager {
+pub struct ConfigureHomeManager {
   pub confirmed: bool,
   pub picking_pkgs: bool,
   pub confirm_buttons: WidgetBox,
