@@ -1,10 +1,10 @@
 use ratatui::{crossterm::event::KeyCode, layout::Constraint, text::Line};
 
 use crate::{
-  installer::{HIGHLIGHT, Installer, Page, Signal},
+  installer::{HIGHLIGHT, Installer, Page, Signal, systempkgs::get_available_pkgs},
   split_hor, split_vert, styled_block, ui_back, ui_close, ui_down, ui_enter, ui_up,
   widget::{
-    Button, ConfigWidget, HelpModal, InfoBox, LineEditor, StrList, TableWidget,
+    Button, ConfigWidget, HelpModal, InfoBox, LineEditor, PackagePicker, StrList, TableWidget,
     WidgetBox,
   },
 };
