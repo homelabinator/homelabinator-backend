@@ -61,13 +61,6 @@ def handle_generate_iso():
         })
 
     # 2. Render Jinja template
-    if not os.path.exists(TEMPLATE_SOURCE):
-        # Create a dummy template if it doesn't exist for the script to be functional
-        with open(TEMPLATE_SOURCE, 'w') as f:
-            f.write("{# Jinja Template #}
-{{ user_content }}
-")
-
     with open(TEMPLATE_SOURCE, 'r') as f:
         template = Template(f.read())
     
