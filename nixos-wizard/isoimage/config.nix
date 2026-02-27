@@ -33,6 +33,8 @@ Run `\e[1;35mnixos-help\e[0m` for the NixOS manual.
 
   '';
 
+  isoImage.squashfsCompression = "gzip -Xcompression-level 1";
+
   environment.systemPackages = [
     pkgs.nixfmt
     pkgs.nixfmt-classic
