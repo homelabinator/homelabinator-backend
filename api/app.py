@@ -12,7 +12,8 @@ app = Flask(__name__)
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000/isos")
 ISO_STORAGE_DIR = "isos"
 CSV_DATABASE = "iso_mappings.csv"
-RESULT_DIR = "result/iso"
+BUILD_DIR = "../nixos-wizard"
+RESULT_DIR = "../nixos-wizard/result/iso"
 TEMPLATE_SOURCE = "nixos_template.nix"
 OUTPUT_CONFIG = "configuration.nix"
 
@@ -72,7 +73,7 @@ def handle_generate_iso():
     # Using shell=True as the command contains shell-specific syntax (.#...)
     build_cmd = "nix build .#nixosConfigurations.installerIso.config.system.build.isoImage"
     try:
-        subprocess.run(build_cmd, shell=True, check=True)
+        subprocess.run(build_cmd, shell=True, check=True, cwd=BUILD_DIR) 
     except subprocess.CalledProcessError as e:
         return jsonify({"error": "Nix build failed", "details": str(e)}), 500
 
