@@ -1,0 +1,25 @@
+name: Build and Deploy WASM
+
+on:
+  push:
+    branches:
+      - "*"
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          submodules: "true"
+
+      # - name: Deploy to remote
+      #   env:
+      #     REMOTE_USER: snowflake
+      #     REMOTE_HOST: 0.0.0.0
+      #     REMOTE_BASE_DIR: homelabinator-backend
+      #   run: |
+      #     REMOTE_TARGET_DIR="${REMOTE_BASE_DIR}/${{ env.BRANCH_NAME }}"
+      #     ssh "${REMOTE_USER}@${REMOTE_HOST}" "rm -rf ${REMOTE_TARGET_DIR}"
+      #     rsync -avz --exclude '.**' --exclude '.*' ./ "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_TARGET_DIR}/"
