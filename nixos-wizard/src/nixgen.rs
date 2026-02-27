@@ -205,8 +205,24 @@ impl NixWriter {
       "system.stateVersion" = nixstr("25.11");
     };
 
+    // Check for /etc/homelabinator-config and append it if it exists
+    let homelabinator_config = if std::path::Path::new("/etc/homelabinator-config").exists() {
+      match std::fs::read_to_string("/etc/homelabinator-config") {
+        Ok(content) => format!(
+          "{{ \n # HOMELABINATOR CONFIG: \n {} \n }}",
+          content.trim()
+        ),
+        Err(e) => {
+          log::error!("Failed to read /etc/homelabinator-config: {}", e);
+          String::from("{}")
+        }
+      }
+    } else {
+      String::from("{}")
+    };
+
     // Combine all configuration attributes
-    cfg_attrs = merge_attrs!(imports, cfg_attrs, state_version);
+    cfg_attrs = merge_attrs!(imports, cfg_attrs, state_version, homelabinator_config);
 
     // Build let-binding declarations for external dependencies
     let mut let_statement_declarations = vec![];
