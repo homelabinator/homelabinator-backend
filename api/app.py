@@ -9,7 +9,7 @@ from jinja2 import Template
 app = Flask(__name__)
 
 # Configuration
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000/isos")
+BASE_URL = os.getenv("BASE_URL", "https://dl.homelabinator.com")
 ISO_STORAGE_DIR = "isos"
 CSV_DATABASE = "iso_mappings.csv"
 BUILD_DIR = "../nixos-wizard"
