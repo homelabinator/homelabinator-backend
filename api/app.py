@@ -5,6 +5,17 @@ import csv
 import subprocess
 import shutil
 from jinja2 import Template
+from flask_cors import CORS
+import re
+
+app = Flask(__name__)
+
+CORS(app, resources={r"/*": {
+    "origins": [
+        r"https?://localhost(:\d+)?",
+        r"https?://([a-z0-9-]+\.)*homelabinator\.com"
+    ]
+}})
 
 app = Flask(__name__)
 

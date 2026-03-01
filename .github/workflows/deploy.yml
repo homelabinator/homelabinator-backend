@@ -25,5 +25,5 @@ jobs:
           rsync -avz --exclude '.**' --exclude '.*' ./ "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_TARGET_DIR}/"
           ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux kill-session -t flask-api 2>/dev/null || true"
           ssh "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p ~/homelabinator-backend/api/isos/"
-          ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux new-session -d -s flask-api \"cd ~/homelabinator-backend/api && nix-shell -p python3 python313Packages.jinja2 python313Packages.flask python313Packages.python-dotenv --command 'python3 app.py'\""
+          ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux new-session -d -s flask-api \"cd ~/homelabinator-backend/api && nix-shell -p python3 uv --command 'uv run --with-requirements requirements.txt app.py'\""
           ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux split-window -t flask-api 'cd ~/homelabinator-backend/api/isos && python3 -m http.server'"
