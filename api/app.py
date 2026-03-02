@@ -10,14 +10,13 @@ import re
 
 app = Flask(__name__)
 
-CORS(app, resources={r"/*": {
-    "origins": [
-        r"https?://localhost(:\d+)?",
-        r"https?://([a-z0-9-]+\.)*homelabinator\.com"
-    ]
-}})
-
-app = Flask(__name__)
+CORS(app, resources={
+    r"/generate-iso": {
+        "origins": ["https://beta.homelabinator.com"],
+        "methods": ["POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Configuration
 BASE_URL = os.getenv("BASE_URL", "https://dl.homelabinator.com")
