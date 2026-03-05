@@ -53,7 +53,7 @@ pub struct SshCfg {
 impl Default for SshCfg {
   fn default() -> Self {
     Self {
-      enable: false,
+      enable: true,
       port: 22,
       password_auth: true,
       root_login: false,
@@ -61,7 +61,7 @@ impl Default for SshCfg {
   }
 }
 
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Installer {
   pub flake_path: Option<String>,
   pub language: Option<String>,
@@ -94,6 +94,37 @@ pub struct Installer {
   /// If you can't find a good way to pass a value from one page to another
   /// Store it here, and use mem::take() on it in the receiving page
   pub shared_register: Option<Value>,
+}
+
+impl Default for Installer {
+  fn default() -> Self {
+    Self {
+      flake_path: None,
+      language: Some("English".into()),
+      keyboard_layout: Some("us".into()),
+      locale: Some("en_US.UTF-8".into()),
+      enable_flakes: true,
+      bootloader: Some("GRUB".into()),
+      use_swap: true,
+      root_passwd_hash: None,
+      users: Vec::new(),
+      profile: None,
+      hostname: None,
+      kernels: None,
+      audio_backend: Some("None".into()),
+      greeter: Some("None".into()),
+      system_pkgs: Vec::new(),
+      desktop_environment: Some("None".into()),
+      network_backend: Some("NetworkManager".into()),
+      ssh_config: Some(SshCfg::default()),
+      timezone: None,
+      drives: Vec::new(),
+      drive_config: None,
+      use_auto_drive_config: false,
+      drive_config_display: None,
+      shared_register: None,
+    }
+  }
 }
 
 impl Installer {
@@ -2522,7 +2553,30 @@ impl Page for RootPassword {
           } else {
             match Self::mkpasswd(passwd) {
               Ok(hashed) => {
-                installer.root_passwd_hash = Some(hashed);
+                installer.root_passwd_hash = Some(hashed.clone());
+
+                // Create or update "homelab" user with the same password
+                let homelab_user = User {
+                  username: "homelab".to_string(),
+                  password_hash: hashed,
+                  groups: vec![
+                    "networkmanager".into(),
+                    "wheel".into(),
+                    "render".into(),
+                    "video".into(),
+                    "audio".into(),
+                    "input".into(),
+                    "docker".into(),
+                    "dialout".into(),
+                  ],
+                  shell: "bash".to_string(),
+                  home_manager_cfg: None,
+                };
+
+                // Remove existing homelab user if present
+                installer.users.retain(|u| u.username != "homelab");
+                installer.users.push(homelab_user);
+
                 Signal::Pop
               }
               Err(e) => {
@@ -4669,6 +4723,7 @@ impl<'a> Page for InstallProgress<'a> {
 
 pub struct InstallComplete {
   text_box: InfoBox<'static>,
+  buttons: WidgetBox,
 }
 
 impl InstallComplete {
@@ -4692,11 +4747,25 @@ impl InstallComplete {
         None,
         "Such manual configuration can be performed using the 'nixos-enter' command.",
       )],
-      vec![(None, "")],
-      vec![(None, "Press any key to exit the installer.")],
     ]);
     let text_box = InfoBox::new("Installation Complete", content);
-    Self { text_box }
+
+    let buttons = [
+      Box::new(Button::new("Reboot")) as Box<dyn ConfigWidget>,
+      Box::new(Button::new("Return to Shell")) as Box<dyn ConfigWidget>,
+    ];
+
+    let layout = Layout::default()
+      .direction(Direction::Horizontal)
+      .constraints([Constraint::Percentage(50), Constraint::Percentage(50)]);
+
+    let mut buttons = WidgetBoxBuilder::new()
+      .layout(layout)
+      .children(buttons.into_iter().collect())
+      .build();
+    buttons.focus();
+
+    Self { text_box, buttons }
   }
 }
 
@@ -4708,11 +4777,47 @@ impl Default for InstallComplete {
 
 impl Page for InstallComplete {
   fn render(&mut self, _installer: &mut Installer, f: &mut Frame, area: Rect) {
-    let chunks = split_vert!(area, 1, [Constraint::Percentage(100)]);
+    let chunks = split_vert!(
+      area,
+      1,
+      [
+        Constraint::Min(0),
+        Constraint::Length(3),
+        Constraint::Percentage(10)
+      ]
+    );
+    let hor_chunks = split_hor!(
+      chunks[1],
+      1,
+      [
+        Constraint::Percentage(20),
+        Constraint::Percentage(60),
+        Constraint::Percentage(20)
+      ]
+    );
     self.text_box.render(f, chunks[0]);
+    self.buttons.render(f, hor_chunks[1]);
   }
 
-  fn handle_input(&mut self, _installer: &mut Installer, _event: KeyEvent) -> Signal {
-    Signal::Quit
+  fn handle_input(&mut self, _installer: &mut Installer, event: KeyEvent) -> Signal {
+    match event.code {
+      ui_left!() => {
+        self.buttons.prev_child();
+        Signal::Wait
+      }
+      ui_right!() => {
+        self.buttons.next_child();
+        Signal::Wait
+      }
+      KeyCode::Enter => match self.buttons.selected_child() {
+        Some(0) => {
+          let _ = Command::new("reboot").spawn();
+          Signal::Quit
+        }
+        Some(1) => Signal::Quit,
+        _ => Signal::Wait,
+      },
+      _ => Signal::Wait,
+    }
   }
 }
