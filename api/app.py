@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, send_from_directory
 import hashlib
 import os
 import csv
@@ -19,7 +19,7 @@ CORS(app, resources={
 })
 
 # Configuration
-BASE_URL = os.getenv("BASE_URL", "https://dl.homelabinator.com")
+BASE_URL = os.getenv("BASE_URL", "https://api.homelabinator.com")
 ISO_STORAGE_DIR = "isos"
 CSV_DATABASE = "iso_mappings.csv"
 BUILD_DIR = "../nixos-wizard"
@@ -49,6 +49,18 @@ def save_to_csv(hash_val, file_path):
         writer = csv.writer(f)
         writer.writerow([hash_val, file_path])
 
+@app.route('/isos/<path:filename>')
+def serve_iso(filename):
+    file_path = os.path.join(ISO_STORAGE_DIR, filename)
+    if not os.path.isfile(file_path):
+        return "<h1>Not Found</h1>", 404
+    return send_from_directory(ISO_STORAGE_DIR, filename)
+
+@app.route('/isos')
+@app.route('/isos/')
+def isos_index():
+    return "<h1>Not Found</h1>", 404
+
 @app.route('/generate-iso', methods=['POST'])
 def handle_generate_iso():
     if 'file' not in request.files:
@@ -68,7 +80,7 @@ def handle_generate_iso():
         return jsonify({
             "status": "exists",
             "hash": md5_hash,
-            "url": f"{BASE_URL}/{md5_hash}/{filename}"
+            "url": f"{BASE_URL}/isos/{md5_hash}/{filename}"
         })
 
     # 2. Render Jinja template
@@ -110,7 +122,7 @@ def handle_generate_iso():
     return jsonify({
         "status": "created",
         "hash": md5_hash,
-        "url": f"{BASE_URL}/{md5_hash}/{source_iso_name}"
+        "url": f"{BASE_URL}/isos/{md5_hash}/{source_iso_name}"
     })
 
 if __name__ == '__main__':
