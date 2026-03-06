@@ -550,12 +550,16 @@ impl Menu {
     let items = current_pages
       .iter()
       .map(|p| {
-        let checkbox = if p.is_complete(installer) {
-          "[X]"
+        if p.is_required() {
+          let checkbox = if p.is_complete(installer) {
+            "[X]"
+          } else {
+            "[ ]"
+          };
+          format!("{} {}", checkbox, p)
         } else {
-          "[ ]"
-        };
-        format!("{} {}", checkbox, p)
+          p.to_string()
+        }
       })
       .collect::<Vec<_>>();
 
