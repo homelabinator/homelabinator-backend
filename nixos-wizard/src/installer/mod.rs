@@ -109,7 +109,7 @@ impl Default for Installer {
       root_passwd_hash: None,
       users: Vec::new(),
       profile: None,
-      hostname: None,
+      hostname: Some("homelab".into()),
       kernels: None,
       audio_backend: Some("None".into()),
       greeter: Some("None".into()),
