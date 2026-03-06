@@ -300,6 +300,40 @@ impl MenuPages {
       MenuPages::Timezone,
     ]
   }
+
+  pub fn is_complete(&self, installer: &Installer) -> bool {
+    match self {
+      MenuPages::SourceFlake => installer.flake_path.is_some(),
+      MenuPages::Language => installer.language.is_some(),
+      MenuPages::KeyboardLayout => installer.keyboard_layout.is_some(),
+      MenuPages::Locale => installer.locale.is_some(),
+      MenuPages::EnableFlakes => true,
+      MenuPages::Drives => installer.drive_config.is_some(),
+      MenuPages::Bootloader => installer.bootloader.is_some(),
+      MenuPages::Swap => true,
+      MenuPages::Hostname => installer.hostname.is_some(),
+      MenuPages::RootPassword => installer.root_passwd_hash.is_some(),
+      MenuPages::UserAccounts => !installer.users.is_empty(),
+      MenuPages::Profile => installer.profile.is_some(),
+      MenuPages::Greeter => installer.greeter.is_some(),
+      MenuPages::DesktopEnvironment => installer.desktop_environment.is_some(),
+      MenuPages::Audio => installer.audio_backend.is_some() && installer.audio_backend.as_deref() != Some("None"),
+      MenuPages::Kernels => installer.kernels.is_some(),
+      MenuPages::SystemPackages => !installer.system_pkgs.is_empty(),
+      MenuPages::Network => installer.network_backend.is_some(),
+      MenuPages::Timezone => installer.timezone.is_some(),
+    }
+  }
+
+  pub fn is_required(&self) -> bool {
+    match self {
+      MenuPages::RootPassword
+      | MenuPages::UserAccounts
+      | MenuPages::Drives
+      | MenuPages::Bootloader => true,
+      _ => false,
+    }
+  }
 }
 
 impl Display for MenuPages {
@@ -441,6 +475,7 @@ impl MenuPages {
 
 /// The main menu page
 pub struct Menu {
+  pages: Vec<MenuPages>,
   menu_items: StrList,
   border_flash_timer: u32,
   button_row: WidgetBox,
@@ -449,10 +484,8 @@ pub struct Menu {
 
 impl Menu {
   pub fn new() -> Self {
-    let items = MenuPages::supported_pages()
-      .iter()
-      .map(|p| p.to_string())
-      .collect::<Vec<_>>();
+    let pages = MenuPages::supported_pages().to_vec();
+    let items = pages.iter().map(|p| p.to_string()).collect::<Vec<_>>();
     let mut menu_items = StrList::new("Main Menu", items);
     let buttons: Vec<Box<dyn ConfigWidget>> = vec![
       Box::new(Button::new("Done")),
@@ -494,16 +527,55 @@ impl Menu {
     ]);
     let help_modal = HelpModal::new("Main Menu", help_content);
     Self {
+      pages,
       menu_items,
       button_row,
       help_modal,
       border_flash_timer: 0,
     }
   }
+
+  fn refresh_pages(&mut self, installer: &Installer) {
+    let mut current_pages = MenuPages::supported_pages().to_vec();
+
+    // Sort: (required && !complete) at the top, others below, maintaining original order
+    current_pages.sort_by_key(|p| {
+      if p.is_required() && !p.is_complete(installer) {
+        0 // Top priority
+      } else {
+        1 // Rest
+      }
+    });
+
+    let items = current_pages
+      .iter()
+      .map(|p| {
+        let checkbox = if p.is_complete(installer) {
+          "[X]"
+        } else {
+          "[ ]"
+        };
+        format!("{} {}", checkbox, p)
+      })
+      .collect::<Vec<_>>();
+
+    // If pages have changed or order has changed, update them
+    if self.pages != current_pages || self.menu_items.items != items {
+      let old_selected_page = self.pages.get(self.menu_items.selected_idx).copied();
+      self.pages = current_pages;
+      self.menu_items.set_items(items);
+
+      // Try to maintain selection of the same page
+      if let Some(old_page) = old_selected_page {
+        if let Some(new_idx) = self.pages.iter().position(|&p| p == old_page) {
+          self.menu_items.selected_idx = new_idx;
+        }
+      }
+    }
+  }
+
   pub fn info_box_for_item(&mut self, installer: &mut Installer, idx: usize) -> WidgetBox {
-    // Get the actual page from supported_pages using the index
-    let supported_pages = MenuPages::supported_pages();
-    let page = supported_pages.get(idx).copied();
+    let page = self.pages.get(idx).copied();
 
     let (display_widget, title, content) = if let Some(page) = page {
       let display_widget = page.display_widget(installer);
@@ -604,6 +676,7 @@ impl Default for Menu {
 
 impl Page for Menu {
   fn render(&mut self, installer: &mut Installer, f: &mut Frame, area: Rect) {
+    self.refresh_pages(installer);
     let chunks = split_hor!(
       area,
       1,
@@ -754,9 +827,7 @@ impl Page for Menu {
       #[allow(unreachable_patterns)]
       ui_enter!() if self.menu_items.is_focused() => {
         let idx = self.menu_items.selected_idx;
-        // Get the actual page from supported_pages using the index
-        let supported_pages = MenuPages::supported_pages();
-        if let Some(page) = supported_pages.get(idx).copied() {
+        if let Some(page) = self.pages.get(idx).copied() {
           page.navigate(installer)
         } else {
           Signal::Wait
