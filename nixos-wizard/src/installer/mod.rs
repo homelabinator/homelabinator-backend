@@ -101,7 +101,7 @@ impl Default for Installer {
     Self {
       flake_path: None,
       language: Some("English".into()),
-      keyboard_layout: Some("us".into()),
+      keyboard_layout: Some("us(qwerty)".into()),
       locale: Some("en_US.UTF-8".into()),
       enable_flakes: true,
       bootloader: Some("GRUB".into()),
