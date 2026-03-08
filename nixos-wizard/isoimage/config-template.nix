@@ -34,8 +34,8 @@
   '';
 
   # TODO: Test which compression type is faster:
-  isoImage.squashfsCompression = "gzip -Xcompression-level 1";
-  # isoImage.squashfsCompression = "zstd -Xcompression-level 3";
+  # isoImage.squashfsCompression = "gzip -Xcompression-level 1";
+  isoImage.squashfsCompression = "zstd -Xcompression-level 1";
 
   environment.etc."homelabinator-config".text = ''
     {{ user_content }}
