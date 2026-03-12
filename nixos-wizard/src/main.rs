@@ -119,6 +119,10 @@ fn main() -> anyhow::Result<()> {
   env_logger::init();
   debug!("Logger initialized");
   init_nixpkgs();
+  
+  // Check for internet connection before displaying UI
+  check_internet_connection()?;
+
 
   let mut stdout = io::stdout();
   let res = {
@@ -310,4 +314,25 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> an
   }
 
   Ok(())
+}
+
+fn check_internet_connection() -> anyhow::Result<()> {
+  use std::process::Command;
+  loop {
+    let status = Command::new("curl")
+        .arg("myip.wtf")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+
+    if let Ok(s) = status
+        && s.success()
+    {
+      return Ok(());
+    } else {
+      println!("No internet connection detected.");
+      println!("Please run 'nmtui' to set up your network.");
+      Command::new("nmtui").status()?;
+    }
+  }
 }

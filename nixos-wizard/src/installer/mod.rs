@@ -330,7 +330,8 @@ impl MenuPages {
       MenuPages::RootPassword
       | MenuPages::UserAccounts
       | MenuPages::Drives
-      | MenuPages::Bootloader => true,
+      | MenuPages::Bootloader
+      | MenuPages::Timezone => true,
       _ => false,
     }
   }
@@ -4573,6 +4574,8 @@ pub struct InstallProgress<'a> {
   log_box: LogBox<'a>,
   progress_bar: ProgressBar,
   help_modal: HelpModal<'static>,
+  error_modal: HelpModal<'static>,
+  shown_error: bool,
   signal: Option<Signal>,
 
   // we only hold onto these to keep them alive during installation
@@ -4635,6 +4638,24 @@ impl<'a> InstallProgress<'a> {
     ]);
     let help_modal = HelpModal::new("Installation Progress", help_content);
 
+    let error_content = styled_block(vec![
+      vec![
+        (Some((Color::Red, Modifier::BOLD)), "ERROR: "),
+        (None, "The installation command has failed."),
+      ],
+      vec![(None, "")],
+      vec![(
+        None,
+        "Please check the logs below for more information.",
+      )],
+      vec![(
+        None,
+        "You may need to restart the installer or check your system.",
+      )],
+    ]);
+    let error_modal = HelpModal::new("Installation Error", error_content);
+
+
     let mut log_box = LogBox::new("Logs".into());
     log_box.open_log(log_path)?;
 
@@ -4644,6 +4665,8 @@ impl<'a> InstallProgress<'a> {
       progress_bar,
       log_box,
       help_modal,
+      error_modal,
+      shown_error: false,
       signal: None,
       _system_cfg: system_cfg,
       _disko_cfg: disko_cfg,
@@ -4710,6 +4733,11 @@ impl<'a> Page for InstallProgress<'a> {
     let _ = self.steps.tick();
     let _ = self.log_box.poll_log();
 
+    if self.steps.error && !self.shown_error {
+      self.error_modal.show();
+      self.shown_error = true;
+    }
+
     let chunks = split_vert!(area, 1, [Constraint::Min(0), Constraint::Length(3)]);
     let hor_chunks = split_hor!(
       chunks[0],
@@ -4729,8 +4757,9 @@ impl<'a> Page for InstallProgress<'a> {
     self.progress_bar.set_progress(progress);
     self.progress_bar.render(f, chunks[1]);
 
-    // Help modal
+    // Help and Error modals
     self.help_modal.render(f, area);
+    self.error_modal.render(f, area);
   }
 
   fn signal(&self) -> Option<Signal> {
@@ -4784,6 +4813,15 @@ impl<'a> Page for InstallProgress<'a> {
     if event.code == KeyCode::Char('c') && event.modifiers.contains(KeyModifiers::CONTROL) {
       return Signal::Quit;
     }
+
+    if self.error_modal.visible {
+      if event.code == KeyCode::Esc || event.code == KeyCode::Char('?') {
+        self.error_modal.hide();
+      }
+      return Signal::Wait;
+    }
+
+
     if self.has_error() {
       match event.code {
         KeyCode::Esc => Signal::Pop,
