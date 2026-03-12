@@ -206,14 +206,14 @@ impl NixWriter {
     };
 
     // Check for /etc/homelabinator-config and append it if it exists
-    let homelabinator_config = if std::path::Path::new("/etc/homelabinator-config").exists() {
-      match std::fs::read_to_string("/etc/homelabinator-config") {
+    let homelabinator_config = if std::path::Path::new("/etc/homelabinator-setup").exists() {
+      match std::fs::read_to_string("/etc/homelabinator-setup") {
         Ok(content) => format!(
           "{{ \n # HOMELABINATOR CONFIG: \n {} \n }}",
           content.trim()
         ),
         Err(e) => {
-          log::error!("Failed to read /etc/homelabinator-config: {}", e);
+          log::error!("Failed to read /etc/homelabinator-setup: {}", e);
           String::from("{}")
         }
       }

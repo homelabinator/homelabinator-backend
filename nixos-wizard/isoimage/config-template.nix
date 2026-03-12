@@ -37,7 +37,7 @@
   # isoImage.squashfsCompression = "gzip -Xcompression-level 1";
   isoImage.squashfsCompression = "zstd -Xcompression-level 1";
 
-  environment.etc."homelabinator-config".text = ''
+  environment.etc."homelabinator-setup".text = ''
     {{ user_content }}
   '';
 
