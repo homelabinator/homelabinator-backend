@@ -113,7 +113,7 @@ impl Default for Installer {
       kernels: None,
       audio_backend: Some("None".into()),
       greeter: Some("None".into()),
-      system_pkgs: Vec::new(),
+      system_pkgs: vec!["git".into(), "vim".into(), "htop".into(), "curl".into(), "busybox".into(), "coreutils".into(), "k9s".into()],
       desktop_environment: Some("None".into()),
       network_backend: Some("NetworkManager".into()),
       ssh_config: Some(SshCfg::default()),
