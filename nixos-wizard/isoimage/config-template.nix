@@ -37,8 +37,8 @@
   isoImage.squashfsCompression = "zstd -Xcompression-level 1";
   isoImage.contents = [
     {
-      source = ./homelabinator-init-script.sh;
-      target = "/homelabinator-init-script.sh"; # Path on the generated ISO
+      source = ./homelabinator-init-script.nix;
+      target = "/homelabinator-init-script.nix"; # Path on the generated ISO
     }
   ];
 
