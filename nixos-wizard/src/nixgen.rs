@@ -205,8 +205,8 @@ impl NixWriter {
       "system.stateVersion" = nixstr("25.11");
     };
 
-    // Check for /etc/homelabinator-config and append it if it exists
-    let homelabinator_config = if std::path::Path::new("/etc/homelabinator-setup").exists() {
+    // Check for /etc/homelabinator-setup and append it if it exists
+    let homelabinator_setup = if std::path::Path::new("/etc/homelabinator-setup").exists() {
       match std::fs::read_to_string("/etc/homelabinator-setup") {
         Ok(content) => format!(
           "{{ \n # HOMELABINATOR CONFIG: \n {} \n }}",
@@ -222,7 +222,7 @@ impl NixWriter {
     };
 
     // Check for init script
-    let homelabinator_config = if std::path::Path::new("/etc/homelabinator-init-setup").exists() {
+    let homelabinator_init_setup = if std::path::Path::new("/etc/homelabinator-init-setup").exists() {
       match std::fs::read_to_string("/etc/homelabinator-init-setup") {
         Ok(content) => format!(
           "{{ \n # HOMELABINATOR Init Script: \n {} \n }}",
@@ -238,7 +238,13 @@ impl NixWriter {
     };
 
     // Combine all configuration attributes
-    cfg_attrs = merge_attrs!(imports, cfg_attrs, state_version, homelabinator_config);
+    cfg_attrs = merge_attrs!(
+      imports,
+      cfg_attrs,
+      state_version,
+      homelabinator_setup,
+      homelabinator_init_setup
+    );
 
     // Build let-binding declarations for external dependencies
     let mut let_statement_declarations = vec![];
