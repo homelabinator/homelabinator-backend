@@ -5,6 +5,7 @@
     # Enable strict error checking and pipe failure detection
     set -e
     set -o pipefail
+    shopt -s nullglob
 
     # Error handler: If any command fails, print the details and drop to a shell
     handle_error() {
@@ -29,7 +30,6 @@
     trap 'handle_error $LINENO' ERR
 
     # Check if we are on tty1 and the user is correct 
-    # (Note: Added a space to 'if [' so bash evaluates it properly)
     if [ "$(tty)" = "/dev/tty1" ] && [ "$USER" = "homelab" ]; then
       
       # Optional: Check if a graphical session is already running 
@@ -80,7 +80,7 @@
           echo "Installing Homelabinator..."
           
           # Rebuild NixOS
-          sudo nixos-rebuild boot
+          sudo nixos-rebuild switch
           
           echo "Homelabinator Successfully installed! Happy Homelabbing!"
           echo "Rebooting in 5 seconds..."
@@ -113,6 +113,10 @@
           
           # Wait a brief moment to ensure cluster readiness after networking is up
           sleep 2
+          
+          # 1. Ensure File Browser is always printed first
+          IP="$LOCAL_IP"
+          echo "File Browser: http://$IP:8080"
           
           NODE_IP=$(sudo k3s kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
 
