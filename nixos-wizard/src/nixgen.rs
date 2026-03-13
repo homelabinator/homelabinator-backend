@@ -222,14 +222,14 @@ impl NixWriter {
     };
 
     // Check for init script
-    let homelabinator_init_setup = if std::path::Path::new("/etc/homelabinator-init-setup").exists() {
-      match std::fs::read_to_string("/etc/homelabinator-init-setup") {
+    let homelabinator_init_setup = if std::path::Path::new("/iso/homelabinator-init-setup.nix").exists() {
+      match std::fs::read_to_string("/iso/homelabinator-init-setup.nix") {
         Ok(content) => format!(
           "{{ \n # HOMELABINATOR Init Script: \n {} \n }}",
           content.trim()
         ),
         Err(e) => {
-          log::error!("Failed to read /etc/homelabinator-init-setup: {}", e);
+          log::error!("Failed to read /iso/homelabinator-init-setup.nix: {}", e);
           String::from("{}")
         }
       }
