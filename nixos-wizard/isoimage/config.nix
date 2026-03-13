@@ -42,10 +42,6 @@
     }
   ];
 
-  environment.etc."homelabinator-setup".text = ''
-    {{ user_content }}
-  '';
-
   environment.systemPackages = [
     pkgs.nixfmt
     pkgs.nixfmt-classic

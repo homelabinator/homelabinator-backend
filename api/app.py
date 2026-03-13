@@ -24,8 +24,9 @@ ISO_STORAGE_DIR = "isos"
 CSV_DATABASE = "iso_mappings.csv"
 BUILD_DIR = "../nixos-wizard"
 RESULT_DIR = "../nixos-wizard/result/iso"
-TEMPLATE_SOURCE = "../nixos-wizard/isoimage/config-template.nix"
-OUTPUT_CONFIG = "../nixos-wizard/isoimage/config.nix"
+TEMPLATE_SOURCE = "../nixos-wizard/isoimage/homelabinator-init-script-template.nix"
+OUTPUT_CONFIG = "../nixos-wizard/isoimage/homelabinator-init-script.nix"
+
 
 # Ensure directories exist
 os.makedirs(ISO_STORAGE_DIR, exist_ok=True)

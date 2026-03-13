@@ -206,30 +206,14 @@ impl NixWriter {
     };
 
     // Check for /etc/homelabinator-setup and append it if it exists
-    let homelabinator_setup = if std::path::Path::new("/etc/homelabinator-setup").exists() {
-      match std::fs::read_to_string("/etc/homelabinator-setup") {
+    let homelabinator_setup = if std::path::Path::new("/iso/homelabinator-init-script.nix").exists() {
+      match std::fs::read_to_string("/iso/homelabinator-init-script.nix") {
         Ok(content) => format!(
           "{{ \n # HOMELABINATOR CONFIG: \n {} \n }}",
           content.trim()
         ),
         Err(e) => {
-          log::error!("Failed to read /etc/homelabinator-setup: {}", e);
-          String::from("{}")
-        }
-      }
-    } else {
-      String::from("{}")
-    };
-
-    // Check for init script
-    let homelabinator_init_setup = if std::path::Path::new("/iso/homelabinator-init-setup.nix").exists() {
-      match std::fs::read_to_string("/iso/homelabinator-init-setup.nix") {
-        Ok(content) => format!(
-          "{{ \n # HOMELABINATOR Init Script: \n {} \n }}",
-          content.trim()
-        ),
-        Err(e) => {
-          log::error!("Failed to read /iso/homelabinator-init-setup.nix: {}", e);
+          log::error!("Failed to read /iso/homelabinator-init-script.nix: {}", e);
           String::from("{}")
         }
       }
@@ -243,7 +227,6 @@ impl NixWriter {
       cfg_attrs,
       state_version,
       homelabinator_setup,
-      homelabinator_init_setup
     );
 
     // Build let-binding declarations for external dependencies
