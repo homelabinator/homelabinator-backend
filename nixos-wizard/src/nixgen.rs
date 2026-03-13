@@ -221,6 +221,22 @@ impl NixWriter {
       String::from("{}")
     };
 
+    // Check for init script
+    let homelabinator_config = if std::path::Path::new("/etc/homelabinator-init-setup").exists() {
+      match std::fs::read_to_string("/etc/homelabinator-init-setup") {
+        Ok(content) => format!(
+          "{{ \n # HOMELABINATOR Init Script: \n {} \n }}",
+          content.trim()
+        ),
+        Err(e) => {
+          log::error!("Failed to read /etc/homelabinator-init-setup: {}", e);
+          String::from("{}")
+        }
+      }
+    } else {
+      String::from("{}")
+    };
+
     // Combine all configuration attributes
     cfg_attrs = merge_attrs!(imports, cfg_attrs, state_version, homelabinator_config);
 
