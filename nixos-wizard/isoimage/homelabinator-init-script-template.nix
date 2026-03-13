@@ -80,7 +80,7 @@
           echo "Installing Homelabinator..."
           
           # Rebuild NixOS
-          sudo nixos-rebuild switch
+          sudo nixos-rebuild boot
           
           echo "Homelabinator Successfully installed! Happy Homelabbing!"
           echo "Rebooting in 5 seconds..."
