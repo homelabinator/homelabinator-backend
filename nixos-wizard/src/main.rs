@@ -332,7 +332,7 @@ fn check_internet_connection() -> anyhow::Result<()> {
     } else {
       println!("No internet connection detected.");
       println!("Please run 'nmtui' to set up your network.");
-      Command::new("nmtui").status()?;
+      std::process::exit(1);
     }
   }
 }
