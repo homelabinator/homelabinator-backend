@@ -92,7 +92,7 @@ fn main() -> anyhow::Result<()> {
   log::debug!("UID: {uid}");
   if uid.as_raw() != 0 {
     return Err(anyhow::anyhow!(
-      "nixos-wizard: This installer must be run as root."
+      "nixos-wizard: This installer must be run as root. Please run `sudo nixos-wizard`."
     ));
   }
   // Set up panic handler to gracefully restore terminal state
