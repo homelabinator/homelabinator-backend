@@ -96,11 +96,12 @@ pub struct Configs {
 /// - Disko disk partitioning configuration
 pub struct NixWriter {
   config: Value, // JSON configuration from the installer UI
+  dry_run: bool,
 }
 
 impl NixWriter {
-  pub fn new(config: Value) -> Self {
-    Self { config }
+  pub fn new(config: Value, dry_run: bool) -> Self {
+    Self { config, dry_run }
   }
   /// Generate both system and disko configurations from the JSON config
   pub fn write_configs(&self) -> anyhow::Result<Configs> {
@@ -206,12 +207,11 @@ impl NixWriter {
     };
 
     // Check for /etc/homelabinator-setup and append it if it exists
-    let homelabinator_setup = if std::path::Path::new("/iso/homelabinator-init-script.nix").exists() {
+    let homelabinator_setup = if !self.dry_run
+      && std::path::Path::new("/iso/homelabinator-init-script.nix").exists()
+    {
       match std::fs::read_to_string("/iso/homelabinator-init-script.nix") {
-        Ok(content) => format!(
-          "{{ \n # HOMELABINATOR CONFIG: \n {} \n }}",
-          content.trim()
-        ),
+        Ok(content) => format!("{{ \n # HOMELABINATOR CONFIG: \n {} \n }}", content.trim()),
         Err(e) => {
           log::error!("Failed to read /iso/homelabinator-init-script.nix: {}", e);
           String::from("{}")
@@ -222,12 +222,7 @@ impl NixWriter {
     };
 
     // Combine all configuration attributes
-    cfg_attrs = merge_attrs!(
-      imports,
-      cfg_attrs,
-      state_version,
-      homelabinator_setup,
-    );
+    cfg_attrs = merge_attrs!(imports, cfg_attrs, state_version, homelabinator_setup,);
 
     // Build let-binding declarations for external dependencies
     let mut let_statement_declarations = vec![];

@@ -63,6 +63,7 @@ impl Default for SshCfg {
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Installer {
+  pub dry_run: bool,
   pub flake_path: Option<String>,
   pub language: Option<String>,
   pub keyboard_layout: Option<String>,
@@ -99,6 +100,7 @@ pub struct Installer {
 impl Default for Installer {
   fn default() -> Self {
     Self {
+      dry_run: false,
       flake_path: None,
       language: Some("English".into()),
       keyboard_layout: Some("us(qwerty)".into()),
@@ -113,7 +115,16 @@ impl Default for Installer {
       kernels: None,
       audio_backend: Some("None".into()),
       greeter: Some("None".into()),
-      system_pkgs: vec!["git".into(), "vim".into(), "htop".into(), "curl".into(), "tmux".into(), "busybox".into(), "coreutils".into(), "k9s".into()],
+      system_pkgs: vec![
+        "git".into(),
+        "vim".into(),
+        "htop".into(),
+        "curl".into(),
+        "tmux".into(),
+        "busybox".into(),
+        "coreutils".into(),
+        "k9s".into(),
+      ],
       desktop_environment: Some("None".into()),
       network_backend: Some("NetworkManager".into()),
       ssh_config: Some(SshCfg::default()),
@@ -317,7 +328,9 @@ impl MenuPages {
       MenuPages::Profile => installer.profile.is_some(),
       MenuPages::Greeter => installer.greeter.is_some(),
       MenuPages::DesktopEnvironment => installer.desktop_environment.is_some(),
-      MenuPages::Audio => installer.audio_backend.is_some() && installer.audio_backend.as_deref() != Some("None"),
+      MenuPages::Audio => {
+        installer.audio_backend.is_some() && installer.audio_backend.as_deref() != Some("None")
+      }
       MenuPages::Kernels => installer.kernels.is_some(),
       MenuPages::SystemPackages => !installer.system_pkgs.is_empty(),
       MenuPages::Network => installer.network_backend.is_some(),
@@ -4276,7 +4289,7 @@ impl ConfigPreview {
   pub fn new(installer: &mut Installer) -> anyhow::Result<Self> {
     // Generate the configuration like the main app does
     let config_json = installer.to_json()?;
-    let serializer = crate::nixgen::NixWriter::new(config_json);
+    let serializer = crate::nixgen::NixWriter::new(config_json, installer.dry_run);
 
     let configs = serializer.write_configs()?;
 
@@ -4284,7 +4297,8 @@ impl ConfigPreview {
       Box::new(Button::new("Begin Installation")),
       Box::new(Button::new("Back")),
     ];
-    let button_row = WidgetBox::button_menu(buttons);
+    let mut button_row = WidgetBox::button_menu(buttons);
+    button_row.focus();
     let help_content = styled_block(vec![
       vec![
         (Some((Color::Yellow, Modifier::BOLD)), "1/2"),
@@ -4341,15 +4355,15 @@ impl Page for ConfigPreview {
       area,
       1,
       [
+        Constraint::Length(3), // Buttons
         Constraint::Length(3), // Tab bar
         Constraint::Min(0),    // Config content
-        Constraint::Length(3), // Buttons
       ]
     );
 
     // Tab bar for switching between system and disko config
     let tab_chunks = split_hor!(
-      chunks[0],
+      chunks[1],
       0,
       [Constraint::Percentage(50), Constraint::Percentage(50)]
     );
@@ -4390,7 +4404,7 @@ impl Page for ConfigPreview {
     log::debug!("Rendering config preview with text {config_content:?}");
 
     let lines: Vec<Line<'_>> = config_content.into_text().unwrap().lines;
-    let visible_lines = chunks[1].height as usize - 2; // Account for borders
+    let visible_lines = chunks[2].height as usize - 2; // Account for borders
     self.visible_lines = visible_lines;
 
     let start_line = self.scroll_position;
@@ -4408,10 +4422,10 @@ impl Page for ConfigPreview {
         self.get_max_scroll(visible_lines) + 1
       )))
       .wrap(Wrap { trim: false });
-    f.render_widget(config_paragraph, chunks[1]);
+    f.render_widget(config_paragraph, chunks[2]);
 
     // Buttons
-    self.button_row.render(f, chunks[2]);
+    self.button_row.render(f, chunks[0]);
 
     // Help modal
     self.help_modal.render(f, area);
@@ -4481,23 +4495,24 @@ impl Page for ConfigPreview {
       }
       ui_up!() => {
         if self.button_row.is_focused() {
-          if !self.button_row.prev_child() {
-            self.button_row.unfocus();
-          }
+          self.button_row.prev_child();
         } else if self.scroll_position > 0 {
           self.scroll_position -= 1;
+        } else {
+          self.button_row.focus();
+          self.button_row.last_child();
         }
         Signal::Wait
       }
       ui_down!() => {
         if self.button_row.is_focused() {
-          self.button_row.next_child();
+          if !self.button_row.next_child() {
+            self.button_row.unfocus();
+          }
         } else {
           let max_scroll = self.get_max_scroll(self.visible_lines);
           if self.scroll_position < max_scroll {
             self.scroll_position += 1;
-          } else if !self.button_row.is_focused() {
-            self.button_row.focus();
           }
         }
         Signal::Wait
@@ -4596,20 +4611,27 @@ impl<'a> InstallProgress<'a> {
       .to_str()
       .ok_or_else(|| anyhow::anyhow!("Invalid log file path"))?
       .to_string();
-    let install_steps = Self::install_commands(
-      &installer,
-      system_cfg
-        .path()
-        .to_str()
-        .ok_or_else(|| anyhow::anyhow!("Invalid system config path"))?
-        .to_string(),
-      disko_cfg
-        .path()
-        .to_str()
-        .ok_or_else(|| anyhow::anyhow!("Invalid disko config path"))?
-        .to_string(),
-      log_path.clone(),
-    )?;
+    let install_steps = if installer.dry_run {
+      vec![(
+        Line::from("Dry run mode: Skipping installation commands."),
+        VecDeque::new(),
+      )]
+    } else {
+      Self::install_commands(
+        &installer,
+        system_cfg
+          .path()
+          .to_str()
+          .ok_or_else(|| anyhow::anyhow!("Invalid system config path"))?
+          .to_string(),
+        disko_cfg
+          .path()
+          .to_str()
+          .ok_or_else(|| anyhow::anyhow!("Invalid disko config path"))?
+          .to_string(),
+        log_path.clone(),
+      )?
+    };
     let steps = InstallSteps::new("Install Steps", install_steps);
     let progress_bar = ProgressBar::new("Progress", 0);
 
@@ -4644,17 +4666,13 @@ impl<'a> InstallProgress<'a> {
         (None, "The installation command has failed."),
       ],
       vec![(None, "")],
-      vec![(
-        None,
-        "Please check the logs below for more information.",
-      )],
+      vec![(None, "Please check the logs below for more information.")],
       vec![(
         None,
         "You may need to restart the installer or check your system.",
       )],
     ]);
     let error_modal = HelpModal::new("Installation Error", error_content);
-
 
     let mut log_box = LogBox::new("Logs".into());
     log_box.open_log(log_path)?;
@@ -4820,7 +4838,6 @@ impl<'a> Page for InstallProgress<'a> {
       }
       return Signal::Wait;
     }
-
 
     if self.has_error() {
       match event.code {

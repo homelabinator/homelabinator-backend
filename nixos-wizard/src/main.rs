@@ -88,9 +88,11 @@ fn main() -> anyhow::Result<()> {
     return Ok(());
   }
 
+  let dry_run = env::args().any(|arg| arg == "--dry-run");
+
   let uid = nix::unistd::getuid();
   log::debug!("UID: {uid}");
-  if uid.as_raw() != 0 {
+  if uid.as_raw() != 0 && !dry_run {
     return Err(anyhow::anyhow!(
       "nixos-wizard: This installer must be run as root. Please run `sudo nixos-wizard`."
     ));
@@ -119,10 +121,11 @@ fn main() -> anyhow::Result<()> {
   env_logger::init();
   debug!("Logger initialized");
   init_nixpkgs();
-  
-  // Check for internet connection before displaying UI
-  check_internet_connection()?;
 
+  // Check for internet connection before displaying UI
+  if !dry_run {
+    check_internet_connection()?;
+  }
 
   let mut stdout = io::stdout();
   let res = {
@@ -130,7 +133,7 @@ fn main() -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     debug!("Running TUI");
-    run_app(&mut terminal)
+    run_app(&mut terminal, dry_run)
   };
 
   debug!("Exiting TUI");
@@ -185,7 +188,7 @@ fn handle_signal(
       );
 
       // Generate NixOS system and disko (disk partitioning) configurations
-      let serializer = crate::nixgen::NixWriter::new(config_json);
+      let serializer = crate::nixgen::NixWriter::new(config_json, installer.dry_run);
 
       match serializer.write_configs() {
         Ok(cfg) => {
@@ -226,8 +229,12 @@ fn handle_signal(
 /// - Pages are pushed/popped based on user navigation
 /// - Each page can send signals to control the overall application flow
 /// - The event loop handles both user input and periodic updates (ticks)
-pub fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> anyhow::Result<()> {
+pub fn run_app(
+  terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
+  dry_run: bool,
+) -> anyhow::Result<()> {
   let mut installer = Installer::new();
+  installer.dry_run = dry_run;
   let mut page_stack: Vec<Box<dyn Page>> = vec![];
   page_stack.push(Box::new(Menu::new()));
 
@@ -293,20 +300,21 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> an
 
     // Wait for user input or timeout
     if event::poll(timeout)?
-		&& let Event::Key(key) = event::read()? {
-			if let Some(page) = page_stack.last_mut() {
-				// Forward keyboard input to the current page
-				let signal = page.handle_input(&mut installer, key);
+      && let Event::Key(key) = event::read()?
+    {
+      if let Some(page) = page_stack.last_mut() {
+        // Forward keyboard input to the current page
+        let signal = page.handle_input(&mut installer, key);
 
-				if handle_signal(signal, &mut page_stack, &mut installer)? {
-					// Page requested application quit
-					break;
-				}
-			} else {
-				// Safety fallback: if no pages exist, return to main menu
-				page_stack.push(Box::new(Menu::new()));
-			}
-		}
+        if handle_signal(signal, &mut page_stack, &mut installer)? {
+          // Page requested application quit
+          break;
+        }
+      } else {
+        // Safety fallback: if no pages exist, return to main menu
+        page_stack.push(Box::new(Menu::new()));
+      }
+    }
 
     if last_tick.elapsed() >= tick_rate {
       last_tick = Instant::now();
@@ -320,13 +328,13 @@ fn check_internet_connection() -> anyhow::Result<()> {
   use std::process::Command;
   loop {
     let status = Command::new("curl")
-        .arg("myip.wtf")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
+      .arg("myip.wtf")
+      .stdout(std::process::Stdio::null())
+      .stderr(std::process::Stdio::null())
+      .status();
 
     if let Ok(s) = status
-        && s.success()
+      && s.success()
     {
       return Ok(());
     } else {

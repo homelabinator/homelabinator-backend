@@ -21,7 +21,9 @@ fn normalize_and_validate_username(raw: &str) -> Result<String, &'static str> {
   Ok(s)
 }
 
-fn default_shell() -> String { "bash".to_string() }
+fn default_shell() -> String {
+  "bash".to_string()
+}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct User {
@@ -377,11 +379,10 @@ impl AddUser {
     let mut name_input = LineEditor::new("Username", None::<&str>);
     name_input.focus();
 
-    let shell_list = StrList::new("Shell", vec![
-      "bash".to_string(),
-      "fish".to_string(),
-      "zsh".to_string(),
-    ]);
+    let shell_list = StrList::new(
+      "Shell",
+      vec!["bash".to_string(), "fish".to_string(), "zsh".to_string()],
+    );
 
     let help_content = styled_block(vec![
       vec![
@@ -564,245 +565,245 @@ impl Page for AddUser {
     self.help_modal.render(f, area);
   }
 
-fn handle_input(
-  &mut self,
-  installer: &mut super::Installer,
-  event: ratatui::crossterm::event::KeyEvent,
-) -> Signal {
-
-  if self.finished {
-    return Signal::Pop;
-  }
-
-  match event.code {
-    KeyCode::Char('?') => {
-      self.help_modal.toggle();
-      return Signal::Wait;
+  fn handle_input(
+    &mut self,
+    installer: &mut super::Installer,
+    event: ratatui::crossterm::event::KeyEvent,
+  ) -> Signal {
+    if self.finished {
+      return Signal::Pop;
     }
-    ui_close!() if self.help_modal.visible => {
-      self.help_modal.hide();
-      return Signal::Wait;
-    }
-    KeyCode::Esc => return Signal::Pop,
-    _ if self.help_modal.visible => {
-      return Signal::Wait;
-    }
-    _ => {}
-  }
 
-  if event.code == KeyCode::Tab {
-    self.cycle_forward();
-    return Signal::Wait;
-  } else if event.code == KeyCode::BackTab {
-    self.cycle_backward();
-    return Signal::Wait;
-  }
-
-  if self.name_input.is_focused() {
     match event.code {
-      KeyCode::Enter => {
-        let entered_owned = self
-          .name_input
-          .get_value()
-          .and_then(|s| s.as_str().map(|s| s.to_owned()))
-          .unwrap_or_default();
-
-        let normalized = match normalize_and_validate_username(&entered_owned) {
-          Ok(n) => n,
-          Err(msg) => { self.name_input.error(msg); return Signal::Wait; }
-        };
-
-        if installer.users.iter().any(|u| u.username == normalized) {
-          self.name_input.error("User already exists");
-          return Signal::Wait;
-        }
-
-        self.username = Some(normalized);
-        self.name_input.unfocus();
-        self.pass_input.focus();
-        Signal::Wait
+      KeyCode::Char('?') => {
+        self.help_modal.toggle();
+        return Signal::Wait;
       }
-      KeyCode::Esc => Signal::Pop,
-      _ => self.name_input.handle_input(event),
+      ui_close!() if self.help_modal.visible => {
+        self.help_modal.hide();
+        return Signal::Wait;
+      }
+      KeyCode::Esc => return Signal::Pop,
+      _ if self.help_modal.visible => {
+        return Signal::Wait;
+      }
+      _ => {}
     }
-  } else if self.pass_input.is_focused() {
-    match event.code {
-      KeyCode::Enter => {
-        if let Some(pass) = self.pass_input.get_value() {
-          let Some(pass) = pass.as_str() else {
-            self.pass_input.error("Password cannot be empty");
-            return Signal::Wait;
+
+    if event.code == KeyCode::Tab {
+      self.cycle_forward();
+      return Signal::Wait;
+    } else if event.code == KeyCode::BackTab {
+      self.cycle_backward();
+      return Signal::Wait;
+    }
+
+    if self.name_input.is_focused() {
+      match event.code {
+        KeyCode::Enter => {
+          let entered_owned = self
+            .name_input
+            .get_value()
+            .and_then(|s| s.as_str().map(|s| s.to_owned()))
+            .unwrap_or_default();
+
+          let normalized = match normalize_and_validate_username(&entered_owned) {
+            Ok(n) => n,
+            Err(msg) => {
+              self.name_input.error(msg);
+              return Signal::Wait;
+            }
           };
-          if pass.is_empty() {
-            self.pass_input.error("Password cannot be empty");
+
+          if installer.users.iter().any(|u| u.username == normalized) {
+            self.name_input.error("User already exists");
             return Signal::Wait;
           }
-          self.pass_input.unfocus();
-          self.pass_confirm.focus();
-          Signal::Wait
-        } else {
-          self.pass_input.error("Password cannot be empty");
+
+          self.username = Some(normalized);
+          self.name_input.unfocus();
+          self.pass_input.focus();
           Signal::Wait
         }
+        KeyCode::Esc => Signal::Pop,
+        _ => self.name_input.handle_input(event),
       }
-      _ => self.pass_input.handle_input(event),
-    }
-  } else if self.pass_confirm.is_focused() {
-    match event.code {
-      KeyCode::Enter => {
-        if let Some(pass) = self.pass_input.get_value() {
-          let Some(pass) = pass.as_str() else {
+    } else if self.pass_input.is_focused() {
+      match event.code {
+        KeyCode::Enter => {
+          if let Some(pass) = self.pass_input.get_value() {
+            let Some(pass) = pass.as_str() else {
+              self.pass_input.error("Password cannot be empty");
+              return Signal::Wait;
+            };
+            if pass.is_empty() {
+              self.pass_input.error("Password cannot be empty");
+              return Signal::Wait;
+            }
+            self.pass_input.unfocus();
+            self.pass_confirm.focus();
+            Signal::Wait
+          } else {
             self.pass_input.error("Password cannot be empty");
-            return Signal::Wait;
-          };
-          if let Some(confirm) = self.pass_confirm.get_value() {
-            let Some(confirm) = confirm.as_str() else {
+            Signal::Wait
+          }
+        }
+        _ => self.pass_input.handle_input(event),
+      }
+    } else if self.pass_confirm.is_focused() {
+      match event.code {
+        KeyCode::Enter => {
+          if let Some(pass) = self.pass_input.get_value() {
+            let Some(pass) = pass.as_str() else {
+              self.pass_input.error("Password cannot be empty");
+              return Signal::Wait;
+            };
+            if let Some(confirm) = self.pass_confirm.get_value() {
+              let Some(confirm) = confirm.as_str() else {
+                self
+                  .pass_confirm
+                  .error("Password confirmation cannot be empty");
+                return Signal::Wait;
+              };
+              if pass != confirm {
+                self.pass_input.error("Passwords do not match");
+                self.pass_confirm.clear();
+                self.pass_input.focus();
+                self.pass_confirm.unfocus();
+                return Signal::Wait;
+              }
+
+              // Keep your original flow: hash + validate username + dup check
+              // (we'll finalize after picking shell)
+              let _hashed = match super::RootPassword::mkpasswd(pass.to_string()) {
+                Ok(h) => h,
+                Err(e) => {
+                  return Signal::Error(anyhow::anyhow!("Failed to hash password: {}", e));
+                }
+              };
+
+              let username =
+                match normalize_and_validate_username(&self.username.clone().unwrap_or_default()) {
+                  Ok(n) => n,
+                  Err(msg) => {
+                    self.name_input.error(msg);
+                    self.pass_confirm.unfocus();
+                    self.name_input.focus();
+                    return Signal::Wait;
+                  }
+                };
+
+              if installer.users.iter().any(|u| u.username == username) {
+                // bounce focus back to the username field so the user can fix it
+                self.name_input.error("User already exists");
+                self.pass_confirm.unfocus();
+                self.name_input.focus();
+                return Signal::Wait;
+              }
+
+              // ---- Minimal change: instead of creating the user here,
+              // show the shell picker (bash/fish/zsh) and finalize there.
+              self.username = Some(username); // keep normalized
+              self.pass_confirm.unfocus();
+              self.shell_list.focus();
+              Signal::Wait
+              // ---- end change
+            } else {
               self
                 .pass_confirm
                 .error("Password confirmation cannot be empty");
               return Signal::Wait;
-            };
-            if pass != confirm {
-              self.pass_input.error("Passwords do not match");
-              self.pass_confirm.clear();
-              self.pass_input.focus();
-              self.pass_confirm.unfocus();
-              return Signal::Wait;
             }
+          } else {
+            self.pass_input.error("Password cannot be empty");
+            return Signal::Wait;
+          }
+        }
+        _ => self.pass_confirm.handle_input(event),
+      }
+    } else if self.shell_list.is_focused() {
+      match event.code {
+        ui_down!() => {
+          self.shell_list.next_item();
+          Signal::Wait
+        }
+        ui_up!() => {
+          self.shell_list.previous_item();
+          Signal::Wait
+        }
+        KeyCode::Tab => {
+          self.cycle_forward();
+          Signal::Wait
+        }
+        KeyCode::BackTab => {
+          self.cycle_backward();
+          Signal::Wait
+        }
+        KeyCode::Esc => {
+          // back to confirm step
+          self.shell_list.unfocus();
+          self.pass_confirm.focus();
+          Signal::Wait
+        }
+        KeyCode::Enter => {
+          // finalize: read shell, re-validate username, re-hash, then push user
+          if let Some(sel) = self.shell_list.selected_item() {
+            self.selected_shell = sel.to_string();
+          }
 
-            // Keep your original flow: hash + validate username + dup check
-            // (we'll finalize after picking shell)
-            let _hashed = match super::RootPassword::mkpasswd(pass.to_string()) {
-              Ok(h) => h,
-              Err(e) => {
-                return Signal::Error(anyhow::anyhow!("Failed to hash password: {}", e));
-              }
-            };
-
-            let username = match normalize_and_validate_username(
-              &self.username.clone().unwrap_or_default()
-            ) {
+          let username =
+            match normalize_and_validate_username(&self.username.clone().unwrap_or_default()) {
               Ok(n) => n,
               Err(msg) => {
                 self.name_input.error(msg);
-                self.pass_confirm.unfocus();
+                self.shell_list.unfocus();
                 self.name_input.focus();
                 return Signal::Wait;
               }
             };
 
-            if installer.users.iter().any(|u| u.username == username) {
-              // bounce focus back to the username field so the user can fix it
-              self.name_input.error("User already exists");
-              self.pass_confirm.unfocus();
-              self.name_input.focus();
-              return Signal::Wait;
-            }
-
-            // ---- Minimal change: instead of creating the user here,
-            // show the shell picker (bash/fish/zsh) and finalize there.
-            self.username = Some(username);  // keep normalized
-            self.pass_confirm.unfocus();
-            self.shell_list.focus();
-            Signal::Wait
-            // ---- end change
-          } else {
-            self
-              .pass_confirm
-              .error("Password confirmation cannot be empty");
-            return Signal::Wait;
-          }
-        } else {
-          self.pass_input.error("Password cannot be empty");
-          return Signal::Wait;
-        }
-      }
-      _ => self.pass_confirm.handle_input(event),
-    }
-  } else if self.shell_list.is_focused() {
-    match event.code {
-      ui_down!() => {
-        self.shell_list.next_item();
-        Signal::Wait
-      }
-      ui_up!() => {
-        self.shell_list.previous_item();
-        Signal::Wait
-      }
-      KeyCode::Tab => {
-        self.cycle_forward();
-        Signal::Wait
-      }
-      KeyCode::BackTab => {
-        self.cycle_backward();
-        Signal::Wait
-      }
-      KeyCode::Esc => {
-        // back to confirm step
-        self.shell_list.unfocus();
-        self.pass_confirm.focus();
-        Signal::Wait
-      }
-      KeyCode::Enter => {
-        // finalize: read shell, re-validate username, re-hash, then push user
-        if let Some(sel) = self.shell_list.selected_item() {
-          self.selected_shell = sel.to_string();
-        }
-
-        let username = match normalize_and_validate_username(
-          &self.username.clone().unwrap_or_default()
-        ) {
-          Ok(n) => n,
-          Err(msg) => {
-            self.name_input.error(msg);
+          if installer.users.iter().any(|u| u.username == username) {
+            self.name_input.error("User already exists");
             self.shell_list.unfocus();
             self.name_input.focus();
             return Signal::Wait;
           }
-        };
 
-        if installer.users.iter().any(|u| u.username == username) {
-          self.name_input.error("User already exists");
-          self.shell_list.unfocus();
-          self.name_input.focus();
-          return Signal::Wait;
+          let pass = self
+            .pass_input
+            .get_value()
+            .and_then(|s| s.as_str().map(|s| s.to_owned()))
+            .unwrap_or_default();
+
+          let hashed = match super::RootPassword::mkpasswd(pass) {
+            Ok(h) => h,
+            Err(e) => {
+              return Signal::Error(anyhow::anyhow!("Failed to hash password: {}", e));
+            }
+          };
+
+          installer.users.push(User {
+            username,
+            password_hash: hashed,
+            groups: vec![],
+            shell: self.selected_shell.clone(),
+            home_manager_cfg: None,
+          });
+          let idx = installer.users.len() - 1;
+          self.created_user_idx = Some(idx);
+          self.finished = true;
+
+          let groups_page = AlterUser::focus_edit_groups(idx, installer.users[idx].groups.clone());
+
+          Signal::Push(Box::new(groups_page))
         }
-
-        let pass = self
-          .pass_input
-          .get_value()
-          .and_then(|s| s.as_str().map(|s| s.to_owned()))
-          .unwrap_or_default();
-
-        let hashed = match super::RootPassword::mkpasswd(pass) {
-          Ok(h) => h,
-          Err(e) => {
-            return Signal::Error(anyhow::anyhow!("Failed to hash password: {}", e));
-          }
-        };
-
-        installer.users.push(User {
-          username,
-          password_hash: hashed,
-          groups: vec![],
-          shell: self.selected_shell.clone(),
-          home_manager_cfg: None,
-        });
-        let idx = installer.users.len() - 1;
-        self.created_user_idx = Some(idx);
-        self.finished = true;
-
-        let groups_page = AlterUser::focus_edit_groups(idx, installer.users[idx].groups.clone());
-
-        Signal::Push(Box::new(groups_page))
+        _ => Signal::Wait,
       }
-      _ => Signal::Wait,
+    } else {
+      self.name_input.focus();
+      Signal::Wait
     }
-  } else {
-    self.name_input.focus();
-    Signal::Wait
   }
-}
 
   fn get_help_content(&self) -> (String, Vec<Line<'_>>) {
     let help_content = styled_block(vec![
@@ -918,11 +919,10 @@ impl AlterUser {
       Box::new(Button::new("Delete user")) as Box<dyn ConfigWidget>,
     ];
     let mut buttons = WidgetBox::button_menu(buttons);
-    let shell_list = StrList::new("Shell", vec![
-      "bash".to_string(),
-      "fish".to_string(),
-      "zsh".to_string(),
-    ]);
+    let shell_list = StrList::new(
+      "Shell",
+      vec!["bash".to_string(), "fish".to_string(), "zsh".to_string()],
+    );
     buttons.focus();
     let help_content = styled_block(vec![
       vec![
@@ -1067,12 +1067,20 @@ impl AlterUser {
     self.pass_confirm.render(f, hor_chunks2[1]);
   }
   pub fn render_select_shell(&mut self, f: &mut ratatui::Frame, area: ratatui::prelude::Rect) {
-    let hor_chunks = split_hor!(area, 1, [
-      Constraint::Percentage(25),
-      Constraint::Percentage(50),
-      Constraint::Percentage(25),
-    ]);
-    let vert = split_vert!(hor_chunks[1], 1, [Constraint::Length(7), Constraint::Min(0)]);
+    let hor_chunks = split_hor!(
+      area,
+      1,
+      [
+        Constraint::Percentage(25),
+        Constraint::Percentage(50),
+        Constraint::Percentage(25),
+      ]
+    );
+    let vert = split_vert!(
+      hor_chunks[1],
+      1,
+      [Constraint::Length(7), Constraint::Min(0)]
+    );
     self.shell_list.render(f, vert[0]);
   }
   pub fn render_edit_groups(
@@ -1177,7 +1185,9 @@ impl AlterUser {
               let mut scanned = 0usize;
               // If you have a len() on StrList, prefer that; else keep a small cap
               while self.shell_list.selected_item() != Some(&cur) && scanned < 8 {
-                if !self.shell_list.next_item() { break; }
+                if !self.shell_list.next_item() {
+                  break;
+                }
                 scanned += 1;
               }
             }
@@ -1243,7 +1253,10 @@ impl AlterUser {
 
         let normalized = match normalize_and_validate_username(&entered_owned) {
           Ok(n) => n,
-          Err(msg) => { self.name_input.error(msg); return Signal::Wait; }
+          Err(msg) => {
+            self.name_input.error(msg);
+            return Signal::Wait;
+          }
         };
 
         // If unchanged, just go back to menu
@@ -1509,7 +1522,7 @@ impl Page for AlterUser {
     } else if self.group_name_input.is_focused() || self.group_list.is_focused() {
       self.render_edit_groups(installer, f, area);
     } else if self.shell_list.is_focused() {
-      self.render_select_shell(f, area);  
+      self.render_select_shell(f, area);
     } else {
       self.buttons.focus();
       self.render_main_menu(f, area);
@@ -1538,7 +1551,7 @@ impl Page for AlterUser {
       }
       _ => {}
     }
-  
+
     if self.buttons.is_focused() {
       self.handle_input_main_menu(installer, event)
     } else if self.name_input.is_focused() {
