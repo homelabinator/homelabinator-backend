@@ -1,7 +1,7 @@
 use serde_json::{Map, Value};
 use std::process::{Command, Stdio};
 
-use crate::{attrset, installer::users::User, merge_attrs};
+use crate::installer::users::User;
 
 /// Convert a value to a properly quoted Nix string literal
 ///
@@ -151,7 +151,7 @@ impl NixWriter {
         "audio_backend" => value.as_str().map(Self::parse_audio),
         "bootloader" => {
           // Bootloader parsing can fail, so handle errors explicitly
-          let res = value.as_str().map(Self::parse_bootloader);
+          let res = value.as_str().map(|v| self.parse_bootloader(v));
           match res {
             Some(Ok(cfg)) => Some(cfg),
             Some(Err(e)) => return Err(e),
@@ -251,6 +251,11 @@ impl NixWriter {
     // Format the generated Nix code for readability
     fmt_nix(raw)
   }
+  fn is_bios_mode(&self) -> bool {
+    let bootloader = self.config["config"]["bootloader"].as_str().unwrap_or("");
+    bootloader.to_lowercase() == "grub" && !std::path::Path::new("/sys/firmware/efi").exists()
+  }
+
   /// Generate Disko configuration for disk partitioning
   ///
   /// Converts the disk layout into Disko's declarative partition format
@@ -260,7 +265,29 @@ impl NixWriter {
     // Extract basic disk information
     let device = config["device"].as_str().unwrap_or("/dev/sda");
     let disk_type = config["type"].as_str().unwrap_or("disk");
-    let content = Self::parse_disko_content(&config["content"])?;
+
+    let content = if self.is_bios_mode() {
+      attrset! {
+        "type" = nixstr("gpt");
+        "partitions" = attrset! {
+          "boot" = attrset! {
+            "size" = nixstr("1M");
+            "type" = nixstr("EF02");
+            "attributes" = "[ 0 ]";
+          };
+          "root" = attrset! {
+            "size" = nixstr("100%");
+            "content" = attrset! {
+              "type" = nixstr("filesystem");
+              "format" = nixstr("ext4");
+              "mountpoint" = nixstr("/");
+            };
+          };
+        };
+      }
+    } else {
+      Self::parse_disko_content(&config["content"])?
+    };
 
     let disko_config = attrset! {
       "device" = nixstr(device);
@@ -564,21 +591,35 @@ impl NixWriter {
       _ => String::new(),
     }
   }
-  fn parse_bootloader(value: &str) -> anyhow::Result<String> {
+  fn parse_bootloader(&self, value: &str) -> anyhow::Result<String> {
+    let is_bios = self.is_bios_mode();
+    let device = self.config["disko"]["device"].as_str().unwrap_or("/dev/sda");
+
     let bootloader_attrs = match value.to_lowercase().as_str() {
       "systemd-boot" => attrset! {
         "systemd-boot.enable" = true;
         "efi.canTouchEfiVariables" = true;
       },
 
-      "grub" => attrset! {
-        grub = attrset! {
-          device = nixstr("nodev");
-          enable = true;
-          efiSupport = true;
-        };
-        "efi.canTouchEfiVariables" = true;
-      },
+      "grub" => {
+        if is_bios {
+          attrset! {
+            grub = attrset! {
+              device = nixstr(device);
+              enable = true;
+            };
+          }
+        } else {
+          attrset! {
+            grub = attrset! {
+              device = nixstr("nodev");
+              enable = true;
+              efiSupport = true;
+            };
+            "efi.canTouchEfiVariables" = true;
+          }
+        }
+      }
       _ => String::new(),
     };
     Ok(attrset! {
