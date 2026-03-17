@@ -5,7 +5,7 @@ import shutil
 import re
 import asyncio
 from typing import Optional
-from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from jinja2 import Template
