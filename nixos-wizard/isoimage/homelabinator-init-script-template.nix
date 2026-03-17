@@ -116,6 +116,9 @@
         else
           echo "Welcome to Homelabinator!"
           
+          # TODO: Hardcoded volume path, need to fix later when customizing volume locations
+          sudo ${pkgs.coreutils}/bin/chmod -R 777 "/var/lib/homelabinator/"
+
           echo "Waiting for a local IP address..."
           
           LOCAL_IP=""
