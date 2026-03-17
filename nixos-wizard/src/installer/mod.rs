@@ -269,6 +269,7 @@ pub enum MenuPages {
   SystemPackages,
   Network,
   Timezone,
+  AdvancedOptions,
 }
 
 impl MenuPages {
@@ -293,24 +294,31 @@ impl MenuPages {
       MenuPages::SystemPackages,
       MenuPages::Network,
       MenuPages::Timezone,
+      MenuPages::AdvancedOptions,
     ]
   }
   pub fn supported_pages() -> &'static [MenuPages] {
     &[
+      MenuPages::Drives,
+      MenuPages::RootPassword,
+      MenuPages::Network,
+      MenuPages::Timezone,
+      MenuPages::AdvancedOptions,
+    ]
+  }
+
+  pub fn advanced_pages() -> &'static [MenuPages] {
+    &[
       MenuPages::KeyboardLayout,
+      MenuPages::UserAccounts,
       MenuPages::Locale,
       MenuPages::EnableFlakes,
-      MenuPages::Drives,
       MenuPages::Bootloader,
       MenuPages::Swap,
       MenuPages::Hostname,
-      MenuPages::RootPassword,
-      MenuPages::UserAccounts,
       MenuPages::DesktopEnvironment,
       MenuPages::Audio,
       MenuPages::SystemPackages,
-      MenuPages::Network,
-      MenuPages::Timezone,
     ]
   }
 
@@ -337,6 +345,11 @@ impl MenuPages {
       MenuPages::SystemPackages => !installer.system_pkgs.is_empty(),
       MenuPages::Network => installer.network_backend.is_some(),
       MenuPages::Timezone => installer.timezone.is_some(),
+      MenuPages::AdvancedOptions => {
+        Self::advanced_pages()
+          .iter()
+          .all(|p| p.is_complete(installer))
+      }
     }
   }
 
@@ -347,6 +360,7 @@ impl MenuPages {
       | MenuPages::Drives
       | MenuPages::Bootloader
       | MenuPages::Timezone => true,
+      MenuPages::AdvancedOptions => Self::advanced_pages().iter().any(|p| p.is_required()),
       _ => false,
     }
   }
@@ -371,9 +385,10 @@ impl Display for MenuPages {
       MenuPages::DesktopEnvironment => "Desktop Environment",
       MenuPages::Audio => "Audio",
       MenuPages::Kernels => "Kernels",
-      MenuPages::SystemPackages => "System Packages (Advanced)",
+      MenuPages::SystemPackages => "System Packages",
       MenuPages::Network => "Network",
       MenuPages::Timezone => "Timezone",
+      MenuPages::AdvancedOptions => "Advanced Options",
     };
     write!(f, "{s}")
   }
@@ -412,6 +427,7 @@ impl MenuPages {
       MenuPages::SystemPackages => SystemPackages::display_widget(installer),
       MenuPages::Network => NetworkConfig::display_widget(installer),
       MenuPages::Timezone => Timezone::display_widget(installer),
+      MenuPages::AdvancedOptions => None,
     }
   }
 
@@ -453,6 +469,16 @@ impl MenuPages {
       MenuPages::SystemPackages => SystemPackages::page_info(),
       MenuPages::Network => NetworkConfig::page_info(),
       MenuPages::Timezone => Timezone::page_info(),
+      MenuPages::AdvancedOptions => (
+        "Advanced Options".to_string(),
+        styled_block(vec![
+          vec![(None, "Configure advanced system settings.")],
+          vec![(
+            None,
+            "These settings are optional or have sensible defaults.",
+          )],
+        ]),
+      ),
     }
   }
 
@@ -485,12 +511,16 @@ impl MenuPages {
       }
       MenuPages::Network => Signal::Push(Box::new(NetworkConfig::new())),
       MenuPages::Timezone => Signal::Push(Box::new(Timezone::new())),
+      MenuPages::AdvancedOptions => Signal::Push(Box::new(Menu::new_advanced())),
     }
   }
 }
 
 /// The main menu page
 pub struct Menu {
+  base_pages: &'static [MenuPages],
+  title: String,
+  is_sub_menu: bool,
   pages: Vec<MenuPages>,
   menu_items: StrList,
   border_flash_timer: u32,
@@ -500,13 +530,25 @@ pub struct Menu {
 
 impl Menu {
   pub fn new() -> Self {
-    let pages = MenuPages::supported_pages().to_vec();
+    Self::with_pages(MenuPages::supported_pages(), "Main Menu", false)
+  }
+
+  pub fn new_advanced() -> Self {
+    Self::with_pages(MenuPages::advanced_pages(), "Advanced Options", true)
+  }
+
+  pub fn with_pages(base_pages: &'static [MenuPages], title: &str, is_sub_menu: bool) -> Self {
+    let pages = base_pages.to_vec();
     let items = pages.iter().map(|p| p.to_string()).collect::<Vec<_>>();
-    let mut menu_items = StrList::new("Main Menu", items);
-    let buttons: Vec<Box<dyn ConfigWidget>> = vec![
-      Box::new(Button::new("Done")),
-      Box::new(Button::new("Abort")),
-    ];
+    let mut menu_items = StrList::new(title, items);
+    let buttons: Vec<Box<dyn ConfigWidget>> = if is_sub_menu {
+      vec![Box::new(Button::new("Back"))]
+    } else {
+      vec![
+        Box::new(Button::new("Done")),
+        Box::new(Button::new("Abort")),
+      ]
+    };
     let button_row = WidgetBoxBuilder::new().children(buttons).build();
     menu_items.focus();
     let help_content = styled_block(vec![
@@ -541,8 +583,11 @@ impl Menu {
       )],
       vec![(None, "Configure all required options before proceeding.")],
     ]);
-    let help_modal = HelpModal::new("Main Menu", help_content);
+    let help_modal = HelpModal::new(title, help_content);
     Self {
+      base_pages,
+      title: title.to_string(),
+      is_sub_menu,
       pages,
       menu_items,
       button_row,
@@ -552,7 +597,7 @@ impl Menu {
   }
 
   fn refresh_pages(&mut self, installer: &Installer) {
-    let mut current_pages = MenuPages::supported_pages().to_vec();
+    let mut current_pages = self.base_pages.to_vec();
 
     // Sort: (required && !complete) at the top, others below, maintaining original order
     current_pages.sort_by_key(|p| {
@@ -618,7 +663,6 @@ impl Menu {
         0 => info_box.highlighted(false),
         _ => unreachable!(),
       }
-      self.border_flash_timer -= 1;
     }
     if let Some(widget) = display_widget {
       WidgetBoxBuilder::new()
@@ -725,7 +769,6 @@ impl Page for Menu {
     self.menu_items.render(f, left_chunks[0]);
     self.button_row.render(f, left_chunks[1]);
     let border_flash_timer = self.border_flash_timer;
-    let decrement_timer = border_flash_timer > 0;
     {
       // genuinely insane that this scoping trickery is actually necessary here
       let info_box: Box<dyn ConfigWidget> = if self.menu_items.is_focused() {
@@ -741,10 +784,8 @@ impl Page for Menu {
       // Render help modal on top of everything
       self.help_modal.render(f, area);
     }
-    {
-      if decrement_timer {
-        self.border_flash_timer -= 1;
-      }
+    if self.border_flash_timer > 0 {
+      self.border_flash_timer -= 1;
     }
   }
 
@@ -781,7 +822,7 @@ impl Page for Menu {
       )],
       vec![(None, "Configure all required options before proceeding.")],
     ]);
-    ("Main Menu".to_string(), help_content)
+    (self.title.clone(), help_content)
   }
   fn handle_input(&mut self, installer: &mut Installer, event: KeyEvent) -> Signal {
     match event.code {
@@ -870,21 +911,31 @@ impl Page for Menu {
         if self.button_row.is_focused() {
           match self.button_row.selected_child() {
             Some(0) => {
-              // Done - Show config preview
-              if installer.has_all_requirements() {
-                match ConfigPreview::new(installer) {
-                  Ok(preview) => Signal::Push(Box::new(preview)),
-                  Err(e) => Signal::Error(anyhow::anyhow!(
-                    "Failed to generate configuration preview: {}",
-                    e
-                  )),
-                }
+              if self.is_sub_menu {
+                Signal::Pop
               } else {
-                self.border_flash_timer = 6;
-                Signal::Wait
+                // Done - Show config preview
+                if installer.has_all_requirements() {
+                  match ConfigPreview::new(installer) {
+                    Ok(preview) => Signal::Push(Box::new(preview)),
+                    Err(e) => Signal::Error(anyhow::anyhow!(
+                      "Failed to generate configuration preview: {}",
+                      e
+                    )),
+                  }
+                } else {
+                  self.border_flash_timer = 6;
+                  Signal::Wait
+                }
               }
             }
-            Some(1) => Signal::Quit, // Abort
+            Some(1) => {
+              if self.is_sub_menu {
+                Signal::Wait
+              } else {
+                Signal::Quit // Abort
+              }
+            }
             _ => Signal::Wait,
           }
         } else {
@@ -892,6 +943,7 @@ impl Page for Menu {
           Signal::Wait
         }
       }
+      ui_back!() if self.is_sub_menu => Signal::Pop,
       _ => Signal::Wait,
     }
   }
