@@ -150,9 +150,9 @@ async def handle_generate_iso(file: UploadFile = File(...)):
                             new_progress += scaled_p2
                     except Exception:
                         # Fallback to previous rule
-                        new_progress += 0.05
+                        new_progress += 0.01
                 else:
-                    new_progress += 0.05
+                    new_progress += 0.01
 
                 # Regardless of the scaling, do not let the "progress_bar" variable decrease.
                 if new_progress > progress_bar:
