@@ -124,7 +124,8 @@ fn main() -> anyhow::Result<()> {
 
   // Check for internet connection before displaying UI
   if !dry_run {
-    check_internet_connection()?;
+    let tz = check_internet_connection()?;
+    crate::installer::DETECTED_TIMEZONE.set(tz).ok();
   }
 
   let mut stdout = io::stdout();
@@ -324,19 +325,31 @@ pub fn run_app(
   Ok(())
 }
 
-fn check_internet_connection() -> anyhow::Result<()> {
+fn check_internet_connection() -> anyhow::Result<Option<String>> {
   use std::process::Command;
   loop {
     let status = Command::new("curl")
-      .arg("myip.wtf")
-      .stdout(std::process::Stdio::null())
-      .stderr(std::process::Stdio::null())
+      .arg("-s")
+      .arg("-o")
+      .arg("/dev/null")
+      .arg("https://cache.nixos.org/")
       .status();
 
     if let Ok(s) = status
       && s.success()
     {
-      return Ok(());
+      let output = Command::new("curl")
+        .arg("-s")
+        .arg("https://geoip.kde.org/v1/calamares")
+        .output()?;
+
+      if output.status.success() {
+        let v: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+        if let Some(tz) = v["time_zone"].as_str() {
+          return Ok(Some(tz.to_string()));
+        }
+      }
+      return Ok(None);
     } else {
       println!("No internet connection detected.");
       println!("Please run 'nmtui' to set up your network.");

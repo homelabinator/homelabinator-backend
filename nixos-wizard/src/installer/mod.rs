@@ -42,6 +42,8 @@ use networking::NetworkConfig;
 use systempkgs::SystemPackages;
 use users::UserAccounts;
 
+pub static DETECTED_TIMEZONE: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct SshCfg {
   pub enable: bool,
@@ -128,7 +130,7 @@ impl Default for Installer {
       desktop_environment: Some("None".into()),
       network_backend: Some("NetworkManager".into()),
       ssh_config: Some(SshCfg::default()),
-      timezone: None,
+      timezone: DETECTED_TIMEZONE.get().cloned().flatten(),
       drives: Vec::new(),
       drive_config: None,
       use_auto_drive_config: false,
@@ -369,7 +371,7 @@ impl Display for MenuPages {
       MenuPages::DesktopEnvironment => "Desktop Environment",
       MenuPages::Audio => "Audio",
       MenuPages::Kernels => "Kernels",
-      MenuPages::SystemPackages => "System Packages",
+      MenuPages::SystemPackages => "System Packages (Advanced)",
       MenuPages::Network => "Network",
       MenuPages::Timezone => "Timezone",
     };
