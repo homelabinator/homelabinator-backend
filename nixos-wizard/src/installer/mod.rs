@@ -360,7 +360,6 @@ impl MenuPages {
       | MenuPages::Drives
       | MenuPages::Bootloader
       | MenuPages::Timezone => true,
-      MenuPages::AdvancedOptions => Self::advanced_pages().iter().any(|p| p.is_required()),
       _ => false,
     }
   }
