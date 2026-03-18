@@ -4781,7 +4781,7 @@ impl<'a> InstallProgress<'a> {
 			(Line::from("Installing NixOS..."),
 			vec![
 			command!("sh", "-c", format!("echo Installing NixOS... 2>&1 > {log_file_path}")),
-			command!("sh", "-c", format!("nixos-install --root /mnt")),
+			command!("sh", "-c", format!("nixos-install --root /mnt 2>&1 > {log_file_path}")),
 			].into()),
 			(Line::from("Importing channels..."),
 			vec![
