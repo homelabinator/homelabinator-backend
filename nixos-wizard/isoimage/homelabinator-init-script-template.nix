@@ -57,13 +57,13 @@
               internet_connected=true
               break
             fi
-            echo "Attempt $i of 5 failed. Retrying in 2 seconds..."
+            echo "Attempt to connect $i of 5 failed. Retrying in 2 seconds..."
             sleep 2
           done
 
           # If internet check fails 5 times, drop to shell
           if [ "$internet_connected" = false ]; then
-            echo -e "Unable to connect to the internet. \n Please connect your computer to the internet, and then run \`sudo nixos-rebuild boot\` and \`sudo reboot\`."
+            echo -e "Unable to connect to the internet. \n Please connect your computer to a persistant internet connection, and then run \`sudo reboot\`."
             exec bash
           fi
           
@@ -116,9 +116,6 @@
         else
           echo "Welcome to Homelabinator!"
           
-          # TODO: Hardcoded volume path, need to fix later when customizing volume locations
-          sudo ${pkgs.coreutils}/bin/chmod -R 777 "/var/lib/homelabinator/"
-
           echo "Waiting for a local IP address..."
           
           LOCAL_IP=""
@@ -150,9 +147,11 @@
           IP="$LOCAL_IP"
           echo -e "File Browser:\t http://$IP:8080"
           
-          NODE_IP=$(sudo k3s kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+          # 2. Extract only the IPv4 address from k3s nodes (filters out IPv6 in dual-stack clusters)
+          NODE_IP=$(sudo k3s kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' | \
+                    ${pkgs.gawk}/bin/awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\./) {print $i; exit}}')
 
-          # 2. Get all NodePort services, extract their names and nodePorts, and format the output
+          # 3. Get all NodePort services, extract their names and nodePorts, and format the output
           sudo k3s kubectl get svc -n default -o jsonpath='{range .items[?(@.spec.type=="NodePort")]}{.metadata.name}{" "}{range .spec.ports[*]}{.nodePort}{" "}{end}{"\n"}{end}' | \
           while read -r svc ports; do
             # Loop through ports (in case a single service exposes multiple NodePorts)
@@ -160,6 +159,11 @@
               printf "%s:\t http://%s:%s\n" "$svc" "$NODE_IP" "$port"
             done
           done
+          
+          # TODO: Hardcoded volume path, need to fix later when customizing volume locations
+          sudo ${pkgs.coreutils}/bin/chmod -R 777 "/var/lib/homelabinator/"
+
+          echo "Note: If you are unable to connect to your services, please give it some time. Application will take longer to setup the first time."
           
         fi
       fi
