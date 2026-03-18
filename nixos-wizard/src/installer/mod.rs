@@ -4781,13 +4781,17 @@ impl<'a> InstallProgress<'a> {
 			(Line::from("Installing NixOS..."),
 			vec![
 			command!("sh", "-c", format!("echo Installing NixOS... 2>&1 > {log_file_path}")),
-			command!("sh", "-c", format!("nixos-install --root /mnt 2>&1 > {log_file_path}")),
+			command!("sh", "-c", format!("nixos-install --root /mnt")),
 			].into()),
 			(Line::from("Importing channels..."),
 			vec![
 			command!("sh", "-c", format!("echo Importing NixOS channels... 2>&1 > {log_file_path}")),
 			command!("sh", "-c", format!("nixos-enter -- nix-channel --add https://nixos.org/channels/nixos-unstable nixos 2>&1 > {log_file_path}")),
 			command!("sh", "-c", format!("nixos-enter -- nix-channel --update 2>&1 > {log_file_path}")),
+			].into()),
+			(Line::from("Checking for Wifi..."),
+			vec![
+			command!("sh", "-c", format!("if nmcli -t -f TYPE,STATE dev | grep -q \"^wifi:connected$\"; then echo \"Wifi installation detected\" && mkdir -p /mnt/etc/NetworkManager/system-connections/ && cp -r /etc/NetworkManager/system-connections/* /mnt/etc/NetworkManager/system-connections/; fi 2>&1 > {log_file_path}")),
 			].into()),
 			(Line::from("Finalizing installation..."),
 			vec![
