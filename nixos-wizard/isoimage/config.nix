@@ -20,14 +20,12 @@
   isoImage.squashfsCompression = "zstd -Xcompression-level 1";
   isoImage.contents = [
     {
-      source = ./homelabinator-init-script.nix;
+      source = ./homelabinator-init-script-template.nix;
       target = "/homelabinator-init-script.nix"; # Path on the generated ISO
     }
   ];
 
   environment.systemPackages = [
-    pkgs.nixfmt
-    pkgs.nixfmt-classic
     nixosWizard
   ];
 
@@ -36,4 +34,3 @@
   nixpkgs.hostPlatform = "x86_64-linux";
   networking.networkmanager.enable = true;
 }
-
