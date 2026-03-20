@@ -112,7 +112,7 @@ async def handle_generate_iso(file: UploadFile = File(...)):
 
         # 3. Run nix build
         build_cmd = (
-            "nix build .#nixosConfigurations.installerIso.config.system.build.isoImage"
+            "nix build ./isoimage#iso"
         )
         # Regex for [1/0/18 built]
         progress_regex = re.compile(r"\[(\d+)/(\d+)/(\d+) built\]")
