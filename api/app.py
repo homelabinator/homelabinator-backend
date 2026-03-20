@@ -4,8 +4,10 @@ import csv
 import shutil
 import re
 import asyncio
+import requests
+from datetime import datetime
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from jinja2 import Template
@@ -15,6 +17,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
+
+# Environment configuration
+APP_ENV = os.getenv("APP_ENV", "dev")  # default to dev
+FORM_URL = os.getenv("FORM_URL")
 
 # Preserve CORS rules
 app.add_middleware(
@@ -62,11 +68,32 @@ def save_to_csv(hash_val: str, file_path: str):
         writer.writerow([hash_val, file_path])
 
 
+def log_to_google_form(path: str, ip: str):
+    if not FORM_URL:
+        return
+    
+    try:
+        # Mapping to specific Google Form entry IDs
+        data = {
+            "entry.105189260": datetime.now().isoformat(),
+            "entry.293764059": ip,
+            "entry.552303105": path
+        }
+        # Note: Ensure FORM_URL is the /formResponse endpoint for POST to work
+        requests.post(FORM_URL, data=data, timeout=5)
+    except Exception as e:
+        print(f"Failed to log to Google Form: {e}")
+
+
 @app.get("/isos/{filename:path}")
-async def serve_iso(filename: str):
+async def serve_iso(filename: str, request: Request):
     file_path = os.path.join(ISO_STORAGE_DIR, filename)
     if not os.path.isfile(file_path):
         return HTMLResponse("<h1>Not Found</h1>", status_code=404)
+    
+    # Log to Google Form
+    log_to_google_form(filename, request.client.host if request.client else "unknown")
+    
     return FileResponse(file_path)
 
 
