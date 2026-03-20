@@ -25,7 +25,7 @@ FORM_URL = os.getenv("FORM_URL")
 # Preserve CORS rules
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://beta.homelabinator.com", "http://localhost:1313"],
+    allow_origins=["https://beta.homelabinator.com", "http://localhost:1313", "https://homelabinator.com"],
     allow_credentials=True,
     allow_methods=["POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
