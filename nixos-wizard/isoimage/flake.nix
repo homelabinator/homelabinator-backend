@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-    wizard.url = "path:/home/snowflake/homelabinator-backend/nixos-wizard"; # Reference the root flake
+    wizard.url = "github:homelabinator/homelabinator-backend?dir=nixos-wizard"; # Reference the root flake
   };
 
   outputs = { self, nixpkgs, wizard }@inputs:
