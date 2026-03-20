@@ -19,11 +19,11 @@ jobs:
           if [ "${{ github.ref_name }}" == "main" ]; then
             echo "ENV_NAME=prod" >> $GITHUB_ENV
             echo "PORT=5001" >> $GITHUB_ENV
-            echo "TMUX_SESSION=prod-flask-api" >> $GITHUB_ENV
+            echo "TMUX_SESSION=prod-homelabinator-backend" >> $GITHUB_ENV
           else
             echo "ENV_NAME=dev" >> $GITHUB_ENV
             echo "PORT=5000" >> $GITHUB_ENV
-            echo "TMUX_SESSION=dev-flask-api" >> $GITHUB_ENV
+            echo "TMUX_SESSION=dev-homelabinator-backend" >> $GITHUB_ENV
           fi
 
       - name: Deploy to remote
