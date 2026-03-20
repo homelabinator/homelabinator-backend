@@ -250,5 +250,9 @@ async def handle_generate_iso(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
 
+    print(f"Running in {APP_ENV} mode")
+    if APP_ENV == "prod":
+        print(f"FORM_URL: {FORM_URL}")
+
     port = int(os.getenv("PORT", 5001 if APP_ENV == 'prod' else 5000))
     uvicorn.run(app, host="0.0.0.0", port=port)
