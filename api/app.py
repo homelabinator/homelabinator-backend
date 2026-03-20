@@ -250,7 +250,5 @@ async def handle_generate_iso(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
 
-    if APP_ENV == 'prod':
-        uvicorn.run(app, host="0.0.0.0", port=5001)
-    else: 
-        uvicorn.run(app, host="0.0.0.0", port=5000)
+    port = int(os.getenv("PORT", 5001 if APP_ENV == 'prod' else 5000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

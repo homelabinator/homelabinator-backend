@@ -14,28 +14,29 @@ jobs:
         with:
           submodules: "true"
 
+      - name: Set environment variables
+        run: |
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            echo "ENV_NAME=prod" >> $GITHUB_ENV
+            echo "PORT=5001" >> $GITHUB_ENV
+            echo "TMUX_SESSION=prod-flask-api" >> $GITHUB_ENV
+          else
+            echo "ENV_NAME=dev" >> $GITHUB_ENV
+            echo "PORT=5000" >> $GITHUB_ENV
+            echo "TMUX_SESSION=dev-flask-api" >> $GITHUB_ENV
+          fi
+
       - name: Deploy to remote
         env:
           REMOTE_USER: snowflake
           REMOTE_HOST: 0.0.0.0
           REMOTE_BASE_DIR: homelabinator-backend
-          BRANCH_NAME: ${{ github.ref_name }}
           FORM_URL: ${{ secrets.FORM_URL }}
         run: |
-          if [ "${{ env.BRANCH_NAME }}" == "main" ]; then
-            PREFIX="prod-"
-            APP_ENV="main"
-          else
-            PREFIX="dev-"
-            APP_ENV="dev"
-          fi
-          
-          REMOTE_TARGET_DIR="${REMOTE_BASE_DIR}/${{ env.BRANCH_NAME }}"
-          SESSION_NAME="${PREFIX}flask-api"
+          REMOTE_TARGET_DIR="${REMOTE_BASE_DIR}/${{ env.ENV_NAME }}"
           
           ssh "${REMOTE_USER}@${REMOTE_HOST}" "rm -rf ${REMOTE_TARGET_DIR}"
           rsync -avz --exclude '.**' --exclude '.*' ./ "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_TARGET_DIR}/"
-          ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux kill-session -t ${SESSION_NAME} 2>/dev/null || true"
+          ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux kill-session -t ${{ env.TMUX_SESSION }} 2>/dev/null || true"
           ssh "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p ~/${REMOTE_TARGET_DIR}/api/isos/"
-          ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux new-session -d -s ${SESSION_NAME} \"cd ~/${REMOTE_TARGET_DIR}/api && export APP_ENV=${APP_ENV} && export FORM_URL=${{ env.FORM_URL }} && nix-shell -p python3 uv --command 'uv run --with-requirements requirements.txt app.py'\""
-          # ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux split-window -t flask-api 'cd ~/homelabinator-backend/api/isos && python3 -m http.server'"
+          ssh "${REMOTE_USER}@${REMOTE_HOST}" "tmux new-session -d -s ${{ env.TMUX_SESSION }} \"cd ~/${REMOTE_TARGET_DIR}/api && export APP_ENV=${{ env.ENV_NAME }} && export PORT=${{ env.PORT }} && export FORM_URL=${{ env.FORM_URL }} && nix-shell -p python3 uv --command 'uv run --with-requirements requirements.txt app.py'\""
