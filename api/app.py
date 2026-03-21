@@ -69,6 +69,7 @@ def save_to_csv(hash_val: str, file_path: str):
 
 
 def log_to_google_form(path: str, ip: str):
+    ip = "None"
     if not FORM_URL:
         return
     
@@ -76,7 +77,7 @@ def log_to_google_form(path: str, ip: str):
         # Mapping to specific Google Form entry IDs
         data = {
             "entry.105189260": datetime.now().isoformat(),
-            "entry.293764059": ip,
+            "entry.293764059": "ip_adress",
             "entry.552303105": path
         }
         # Note: Ensure FORM_URL is the /formResponse endpoint for POST to work
