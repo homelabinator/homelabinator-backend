@@ -25,7 +25,11 @@ FORM_URL = os.getenv("FORM_URL")
 # Preserve CORS rules
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://beta.homelabinator.com", "http://localhost:1313", "https://homelabinator.com"],
+    allow_origins=[
+        "https://beta.homelabinator.com",
+        "http://localhost:1313",
+        "https://homelabinator.com",
+    ],
     allow_credentials=True,
     allow_methods=["POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
@@ -68,33 +72,11 @@ def save_to_csv(hash_val: str, file_path: str):
         writer.writerow([hash_val, file_path])
 
 
-def log_to_google_form(path: str, ip: str):
-    ip = "None"
-    if not FORM_URL:
-        return
-    
-    try:
-        # Mapping to specific Google Form entry IDs
-        data = {
-            "entry.105189260": datetime.now().isoformat(),
-            "entry.293764059": "ip_adress",
-            "entry.552303105": path
-        }
-        # Note: Ensure FORM_URL is the /formResponse endpoint for POST to work
-        requests.post(FORM_URL, data=data, timeout=5)
-    except Exception as e:
-        print(f"Failed to log to Google Form: {e}")
-
-
 @app.get("/isos/{filename:path}")
 async def serve_iso(filename: str, request: Request):
     file_path = os.path.join(ISO_STORAGE_DIR, filename)
     if not os.path.isfile(file_path):
         return HTMLResponse("<h1>Not Found</h1>", status_code=404)
-    
-    # Log to Google Form
-    log_to_google_form(filename, request.client.host if request.client else "unknown")
-    
     return FileResponse(file_path)
 
 
@@ -159,9 +141,7 @@ async def handle_generate_iso(file: UploadFile = File(...)):
                 return
 
             # 3. Run nix build
-            build_cmd = (
-                "nix build ./isoimage#iso"
-            )
+            build_cmd = "nix build ./isoimage#iso"
             # Regex for [1/0/18 built]
             progress_regex = re.compile(r"\[(\d+)/(\d+)/(\d+) built\]")
 
@@ -207,7 +187,10 @@ async def handle_generate_iso(file: UploadFile = File(...)):
                         progress_bar = new_progress
 
                     # Cap at 100 for safety
-                    yield {"event": "progress", "data": f"{min(progress_bar, 100.0):.2f}"}
+                    yield {
+                        "event": "progress",
+                        "data": f"{min(progress_bar, 100.0):.2f}",
+                    }
 
                 await process.wait()
                 if process.returncode != 0:
@@ -220,12 +203,18 @@ async def handle_generate_iso(file: UploadFile = File(...)):
 
             # 4. Find and move ISO
             if not os.path.exists(RESULT_DIR):
-                yield {"event": "error", "data": f"Build directory {RESULT_DIR} not found"}
+                yield {
+                    "event": "error",
+                    "data": f"Build directory {RESULT_DIR} not found",
+                }
                 return
 
             iso_files = [f for f in os.listdir(RESULT_DIR) if f.endswith(".iso")]
             if not iso_files:
-                yield {"event": "error", "data": "No ISO file found in result directory"}
+                yield {
+                    "event": "error",
+                    "data": "No ISO file found in result directory",
+                }
                 return
 
             source_iso_name = iso_files[0]
@@ -252,8 +241,5 @@ if __name__ == "__main__":
     import uvicorn
 
     print(f"Running in {APP_ENV} mode")
-    if APP_ENV == "prod":
-        print(f"FORM_URL: {FORM_URL}")
-
-    port = int(os.getenv("PORT", 5001 if APP_ENV == 'prod' else 5000))
+    port = int(os.getenv("PORT", 5001 if APP_ENV == "prod" else 5000))
     uvicorn.run(app, host="0.0.0.0", port=port)
