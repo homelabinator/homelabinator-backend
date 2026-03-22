@@ -20,7 +20,6 @@ app = FastAPI()
 
 # Environment configuration
 APP_ENV = os.getenv("APP_ENV", "dev")  # default to dev
-FORM_URL = os.getenv("FORM_URL")
 
 # Preserve CORS rules
 app.add_middleware(
