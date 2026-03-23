@@ -33,9 +33,14 @@ app.add_middleware(
     allow_methods=["POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
-
+os.getenv("PORT", 5001 if APP_ENV == "prod" else 5000)
 # Configuration
-BASE_URL = os.getenv("BASE_URL", "https://api.homelabinator.com")
+BASE_URL = os.getenv(
+    "BASE_URL",
+    "https://api.homelabinator.com"
+    if APP_ENV == "prod"
+    else "https://beta-api.homelabinator.com/",
+)
 ISO_STORAGE_DIR = "isos"
 CSV_DATABASE = "iso_mappings.csv"
 BUILD_DIR = "../nixos-wizard"
