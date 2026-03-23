@@ -39,7 +39,7 @@ BASE_URL = os.getenv(
     "BASE_URL",
     "https://api.homelabinator.com"
     if APP_ENV == "prod"
-    else "https://beta-api.homelabinator.com/",
+    else "https://beta-api.homelabinator.com",
 )
 ISO_STORAGE_DIR = "isos"
 CSV_DATABASE = "iso_mappings.csv"
