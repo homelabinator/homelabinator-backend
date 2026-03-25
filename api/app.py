@@ -81,6 +81,7 @@ async def serve_iso(filename: str, request: Request):
     file_path = os.path.join(ISO_STORAGE_DIR, filename)
     if not os.path.isfile(file_path):
         return HTMLResponse("<h1>Not Found</h1>", status_code=404)
+    print(f"ISO Downloaded: {datetime.now()} - {file_path}")
     return FileResponse(file_path)
 
 
