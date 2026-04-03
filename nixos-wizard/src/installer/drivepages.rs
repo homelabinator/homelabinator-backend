@@ -28,8 +28,8 @@ pub struct Drives<'a> {
 impl<'a> Drives<'a> {
   pub fn new() -> Self {
     let buttons = vec![
-      Box::new(Button::new("Use a best-effort default partition layout")) as Box<dyn ConfigWidget>,
-      Box::new(Button::new("Configure partitions manually")) as Box<dyn ConfigWidget>,
+      Box::new(Button::new("I understand the risks, continue")) as Box<dyn ConfigWidget>,
+      Box::new(Button::new("Advanced Partitioning")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("Back")) as Box<dyn ConfigWidget>,
     ];
     let mut button_row = WidgetBox::button_menu(buttons);
@@ -41,33 +41,6 @@ impl<'a> Drives<'a> {
           None,
           "Select how you would like to configure your drives for the NixOS installation.",
         )],
-        vec![
-          (None, "- "),
-          (
-            Some((Color::Green, Modifier::BOLD)),
-            "'Use a best-effort default partition layout'",
-          ),
-          (
-            None,
-            " will attempt to automatically partition and format your selected drive with sensible defaults. ",
-          ),
-          (None, "This is recommended for most users."),
-        ],
-        vec![
-          (None, "- "),
-          (
-            Some((Color::Green, Modifier::BOLD)),
-            "'Configure partitions manually'",
-          ),
-          (
-            None,
-            " will allow you to specify exactly how your drive should be partitioned and formatted. ",
-          ),
-          (
-            None,
-            "This is recommended for advanced users who have specific requirements.",
-          ),
-        ],
         vec![
           (Some((Color::Red, Modifier::BOLD)), "NOTE: "),
           (None, "When the installer is run, "),
