@@ -80,9 +80,12 @@ impl<'a> Drives<'a> {
       )],
       vec![(
         None,
-        "• Best-effort default - Automatic partitioning (recommended)",
+        "• I understand the risks, continue - Automatic partitioning with ext4 (recommended)",
       )],
-      vec![(None, "• Manual configuration - Advanced users only")],
+      vec![(
+        None,
+        "• Advanced Partitioning - Automatic partitioning with filesystem selection",
+      )],
       vec![(None, "")],
       vec![
         (Some((Color::Red, Modifier::BOLD)), "WARNING: "),
@@ -151,10 +154,12 @@ impl<'a> Page for Drives<'a> {
         match idx {
           0 => {
             installer.use_auto_drive_config = true;
+            installer.skip_auto_fs_selection = true;
             Signal::Push(Box::new(SelectDrive::new(table)))
           }
           1 => {
-            installer.use_auto_drive_config = false;
+            installer.use_auto_drive_config = true;
+            installer.skip_auto_fs_selection = false;
             Signal::Push(Box::new(SelectDrive::new(table)))
           }
           2 => Signal::Pop,
@@ -190,9 +195,12 @@ impl<'a> Page for Drives<'a> {
       )],
       vec![(
         None,
-        "• Best-effort default - Automatic partitioning (recommended)",
+        "• I understand the risks, continue - Automatic partitioning with ext4 (recommended)",
       )],
-      vec![(None, "• Manual configuration - Advanced users only")],
+      vec![(
+        None,
+        "• Advanced Partitioning - Automatic partitioning with filesystem selection",
+      )],
       vec![(None, "")],
       vec![
         (Some((Color::Red, Modifier::BOLD)), "WARNING: "),
@@ -282,7 +290,15 @@ impl Page for SelectDrive {
 
           installer.drive_config = Some(disk.clone());
           if installer.use_auto_drive_config {
-            Signal::Push(Box::new(SelectFilesystem::new(None)))
+            if installer.skip_auto_fs_selection {
+              if let Some(config) = installer.drive_config.as_mut() {
+                config.use_default_layout(Some("ext4".to_string()));
+              }
+              installer.make_drive_config_display();
+              Signal::PopCount(2)
+            } else {
+              Signal::Push(Box::new(SelectFilesystem::new(None)))
+            }
           } else {
             let Some(ref drive) = installer.drive_config else {
               return Signal::Error(anyhow::anyhow!("No drive config available"));

@@ -90,6 +90,7 @@ pub struct Installer {
 
   pub drive_config: Option<Disk>,
   pub use_auto_drive_config: bool,
+  pub skip_auto_fs_selection: bool,
 
   pub drive_config_display: Option<Vec<DiskItem>>,
 
@@ -134,6 +135,7 @@ impl Default for Installer {
       drives: Vec::new(),
       drive_config: None,
       use_auto_drive_config: false,
+      skip_auto_fs_selection: false,
       drive_config_display: None,
       shared_register: None,
     }
