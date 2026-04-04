@@ -6,7 +6,39 @@ on:
       - "*"
 
 jobs:
+  update-flake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          submodules: "true"
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Nix Flake
+        working-directory: nixos-wizard/isoimage
+        run: nix flake update
+
+      - name: Commit and push flake.lock
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          git add nixos-wizard/isoimage/flake.lock
+          
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update flake.lock in nixos-wizard/isoimage"
+            git push
+          else
+            echo "No changes to flake.lock. Skipping commit."
+          fi
+
   build-and-deploy:
+    needs: update-flake
     runs-on: self-hosted
     steps:
       - name: Check out repo
