@@ -124,9 +124,9 @@
             # Use iproute2 and awk to filter out lo, veth*, flannel*, cin0*, cni0* 
             # then grab the actual IP using cut and head
             LOCAL_IP=$(${pkgs.iproute2}/bin/ip -o -4 addr show up | \
-                       ${pkgs.gawk}/bin/awk '$2 !~ /^(veth|flannel|cin|cni|lo)/ {print $4}' | \
-                       ${pkgs.coreutils}/bin/cut -d/ -f1 | \
-                       ${pkgs.coreutils}/bin/head -n 1)
+                        ${pkgs.gawk}/bin/awk '$2 !~ /^(veth|flannel|cin|cni|lo)/ {print $4}' | \
+                        ${pkgs.coreutils}/bin/cut -d/ -f1 | \
+                        ${pkgs.coreutils}/bin/head -n 1)
             
             if [ -z "$LOCAL_IP" ]; then
               sleep 2
@@ -162,6 +162,16 @@
           
           # TODO: Hardcoded volume path, need to fix later when customizing volume locations
           sudo ${pkgs.coreutils}/bin/chmod -R 777 "/var/lib/homelabinator/"
+
+          # Run chmod 777 on change
+          (
+            set +e # Prevent the subshell from exiting if a command fails
+            while true; do
+              ${pkgs.findutils}/bin/find "/var/lib/homelabinator/" 2>/dev/null | \
+                ${pkgs.entr}/bin/entr -p -d sudo ${pkgs.coreutils}/bin/chmod -R 777 "/var/lib/homelabinator/" >/dev/null 2>&1
+              sleep 1
+            done
+          ) &
 
           echo "Note: If you are unable to connect to your services, please give it some time. Application will take longer to setup the first time."
           
