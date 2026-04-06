@@ -303,7 +303,6 @@ impl MenuPages {
     &[
       MenuPages::Drives,
       MenuPages::RootPassword,
-      MenuPages::Network,
       MenuPages::Timezone,
       MenuPages::AdvancedOptions,
     ]
@@ -318,6 +317,7 @@ impl MenuPages {
       MenuPages::Bootloader,
       MenuPages::Swap,
       MenuPages::Hostname,
+      MenuPages::Network,
       MenuPages::DesktopEnvironment,
       MenuPages::Audio,
       MenuPages::SystemPackages,

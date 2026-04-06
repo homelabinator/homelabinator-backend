@@ -107,11 +107,11 @@
       },
       "locked": {
         "dir": "nixos-wizard",
-        "lastModified": 1775310310,
-        "narHash": "sha256-B7eHwvH7vTjvcbRwAjkF/0TnNDwac5jUO54YjfQ6kQQ=",
+        "lastModified": 1775310340,
+        "narHash": "sha256-ShVASwNaJwDEwBzOPXDViFNkvlxDnY5P5KB5njIpf5E=",
         "owner": "homelabinator",
         "repo": "homelabinator-backend",
-        "rev": "3c50f812028a093ea3829fcc488f6c2470601cc9",
+        "rev": "a88d98fa184b35f1725da8a8715afa2ba36b9deb",
         "type": "github"
       },
       "original": {

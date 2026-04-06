@@ -1,6 +1,14 @@
 
   {{ user_content }}
 
+  services.cron = {
+    enable = true;
+    systemCronJobs = [
+      "*/5 * * * *      root    date >> /tmp/cron.log"
+      "@reboot          root    while true; do ${pkgs.findutils}/bin/find /var/lib/homelabinator/ 2>/dev/null | ${pkgs.entr}/bin/entr -p -d ${pkgs.coreutils}/bin/chmod -R 777 /var/lib/homelabinator/ >/dev/null 2>&1; sleep 1; done"
+    ];
+  };
+
   programs.bash.loginShellInit = ''
     # Check if we are on tty1 and the user is correct 
     if [ "$(tty)" = "/dev/tty1" ] && [ "$USER" = "homelab" ]; then
@@ -124,9 +132,9 @@
             # Use iproute2 and awk to filter out lo, veth*, flannel*, cin0*, cni0* 
             # then grab the actual IP using cut and head
             LOCAL_IP=$(${pkgs.iproute2}/bin/ip -o -4 addr show up | \
-                       ${pkgs.gawk}/bin/awk '$2 !~ /^(veth|flannel|cin|cni|lo)/ {print $4}' | \
-                       ${pkgs.coreutils}/bin/cut -d/ -f1 | \
-                       ${pkgs.coreutils}/bin/head -n 1)
+                        ${pkgs.gawk}/bin/awk '$2 !~ /^(veth|flannel|cin|cni|lo)/ {print $4}' | \
+                        ${pkgs.coreutils}/bin/cut -d/ -f1 | \
+                        ${pkgs.coreutils}/bin/head -n 1)
             
             if [ -z "$LOCAL_IP" ]; then
               sleep 2
